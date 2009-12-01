@@ -13,26 +13,13 @@
  * for more details.
  * -------------------------------- Arctic Core ------------------------------*/
 
-
-
-
-
-
-
-
-/*
- * timer.c
- *
- *  Created on: 2009-jan-17
- *      Author: mahi
- */
-
 #include "Os.h"
 #include "sys.h"
 #include "pcb.h"
 #include "internal.h"
 #include "stm32f10x.h"
 #include "core_cm3.h"
+#include "int_ctrl.h"
 
 /**
  * Init of free running timer.
@@ -40,7 +27,7 @@
 void Frt_Init( void ) {
 	TaskType tid;
 	tid = Os_CreateIsr(OsTick,6/*prio*/,"OsTick");
-	IntCtrl_AttachIsr2(tid,NULL,7);
+	IntCtrl_AttachIsr2(tid,NULL, SysTick_IRQn);
 }
 
 /**
@@ -53,6 +40,9 @@ void Frt_Init( void ) {
 void Frt_Start(uint32_t period_ticks) {
 
 	SysTick_Config(period_ticks);
+
+	 /* Set SysTick Priority to 3 */
+	NVIC_SetPriority(SysTick_IRQn, 0x0C);
 
 #if 0
 	// SysTick interrupt each 250ms with counter clock equal to 9MHz

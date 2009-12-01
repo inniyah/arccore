@@ -18,7 +18,16 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <stdlib.h>
-//#include "clibsupport_gcc.h"
+#include <string.h>
+#include <stdio.h>
+#include "Std_Types.h"
+#include "Ramlog.h"
+
+#if defined(CFG_ARM_CM3)
+#include "irq.h"
+#include "core_cm3.h"
+#endif
+
 
 #if defined(CFG_ARM)
 #define open	_open
@@ -63,12 +72,7 @@ static volatile char g_TConn __attribute__ ((section (".winidea_port")));
 static volatile char t32_outport __attribute__ ((section (".t32_outport")));
 
 
-int arc_putchar(int c) {
-	char cc = c;
-	write( 1,&cc,1);
 
-	return 0;
-}
 
 void t32_writebyte(char c)
 {
@@ -214,15 +218,24 @@ int write(  int fd, char *buf, int nbytes)
 	}
 	else
 	{
+#if defined(USE_RAMLOG)
 		/* RAMLOG support */
 		if(fd == FILE_RAMLOG) {
 		  	for (int i = 0; i < nbytes; i++) {
 				ramlog_chr (*(buf + i));
 		  	}
 		}
+#endif
 	}
 
 	return (nbytes);
+}
+
+int arc_putchar(int c) {
+	char cc = c;
+	write( 1,&cc,1);
+
+	return 0;
 }
 
 /* If we use malloc and it runs out of memory it calls sbrk()
@@ -233,8 +246,18 @@ extern char _end[];
 
 //static char *curbrk = _end;
 
+#ifndef HEAPSIZE
 #define HEAPSIZE 16000
-unsigned char _heap[HEAPSIZE];
+#endif
+
+/*
+ * The heap sadly have alignment that depends on the pagesize that
+ * you compile malloc newlib with. From what I can tell from the
+ * code that is a pagesize of 4096.
+ */
+
+unsigned char _heap[HEAPSIZE] __attribute__((aligned (4)));
+//__attribute__((section(".heap")));
 
 caddr_t sbrk( int incr )
 {

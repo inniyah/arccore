@@ -30,6 +30,8 @@
 
 extern void dec_exception( void );
 
+OsTickType OsTickFreq = 1000;
+
 GEN_APPLICATION_HEAD {
 	GEN_APPLICATON(BLINKER_APP_ID,"BlinkerApp",true,NULL,NULL,NULL , 0,0,0,0,0,0 )
 };
@@ -88,31 +90,28 @@ GEN_PCB_LIST()
 // --- INTERRUPTS ---
 uint8_t os_interrupt_stack[OS_INTERRUPT_STACK_SIZE] __attribute__ ((aligned (0x10)));
 
-// The vector table
-void * intc_vector_tbl[NUMBER_OF_INTERRUPTS_AND_EXCEPTIONS] __attribute__ ((aligned (0x0800),section(".data")))= {
-};
-
-// The type of vector
-uint8 intc_type_tbl[NUMBER_OF_INTERRUPTS_AND_EXCEPTIONS] = {
-};
-
+GEN_IRQ_VECTOR_TABLE_HEAD {};
+GEN_IRQ_ISR_TYPE_TABLE_HEAD {};
+GEN_IRQ_PRIORITY_TABLE_HEAD {};
 
 // --- COUNTERS ---
 GEN_COUNTER_HEAD {
-	GEN_COUNTER(	OS_TICK_COUNTER,
-					"OS_TICK_COUNTER",
+	GEN_COUNTER(	COUNTER_ID_OsTick,
+					"COUNTER_ID_OsTick",
 					COUNTER_TYPE_HARD,
 					COUNTER_UNIT_NANO,
 					0xffff,1,1,0 ),
 };
+
+CounterType Os_Arc_OsTickCounter = COUNTER_ID_OsTick;
 
 // --- ALARMS ---
 GEN_ALARM_HEAD {
 	{
 		.expire_val	= 10,
 		.active		= FALSE,
-		.counter = &counter_list[OS_TICK_COUNTER],
-		.counter_id = OS_TICK_COUNTER,
+		.counter = &counter_list[COUNTER_ID_OsTick],
+		.counter_id = COUNTER_ID_OsTick,
 		.action =
 		{
 				.type = ALARM_ACTION_ACTIVATETASK,
@@ -123,8 +122,8 @@ GEN_ALARM_HEAD {
 	{
 		.expire_val	= 25,
 		.active		= FALSE,
-		.counter = &counter_list[OS_TICK_COUNTER],
-		.counter_id = OS_TICK_COUNTER,
+		.counter = &counter_list[COUNTER_ID_OsTick],
+		.counter_id = COUNTER_ID_OsTick,
 		.action =
 		{
 				.type = ALARM_ACTION_ACTIVATETASK,
@@ -135,8 +134,8 @@ GEN_ALARM_HEAD {
 	{
 		.expire_val	= 100,
 		.active		= FALSE,
-		.counter = &counter_list[OS_TICK_COUNTER],
-		.counter_id = OS_TICK_COUNTER,
+		.counter = &counter_list[COUNTER_ID_OsTick],
+		.counter_id = COUNTER_ID_OsTick,
 		.action =
 		{
 				.type = ALARM_ACTION_ACTIVATETASK,
@@ -151,13 +150,13 @@ GEN_HOOKS( StartupHook, ProtectionHook, ShutdownHook, ErrorHook, PreTaskHook, Po
 
 // --- MISC ---
 uint32 os_dbg_mask = 0;
-
-//	D_MASTER_PRINT |\
-//	D_ISR_MASTER_PRINT |\
-//	D_STDOUT |\
-//	D_ISR_STDOUT |
-//	D_ALARM | D_TASK;
-
+/*
+	D_MASTER_PRINT |\
+	D_ISR_MASTER_PRINT |\
+	D_STDOUT |\
+	D_ISR_STDOUT |\
+	D_ALARM | D_TASK;
+*/
 
 #include "os_config_funcs.h"
 

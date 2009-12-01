@@ -3,8 +3,9 @@
 #VPATH += $(ROOTDIR)/arch/arm/arm_cm3/kernel
 vpath-y += $(ARCH_PATH-y)/kernel
 #obj-y += asm_sample.o
+#CFLAGS_asm_sample.o += -O3
 obj-y += arch_krn.o
-
+#obj-y += stm32f10x_it.o
 
 # object files 
 obj-y += event.o
@@ -33,13 +34,15 @@ def-y+=CC_KERNEL
 dep-y += asm_offset.h
 dep-y += kernel_offset.h
 dep-$(CFG_ARM_CM3) += arch_offset.h
+obj-$(CFG_ARM_CM3) += misc.o
+
 
 # ARM assembler generates "define STACK_APA $12". The extra '$' we want to go.
 # Assembler offsets
 %_offset.h: %_offset.c
 	@echo "  >> generating $@ from $<"
 	$(Q)$(CC) -S $(CFLAGS) -o $(@:.h=.s) $(addprefix -I ,$(inc-y)) $(addprefix -D,$(def-y)) $<
-	gawk '/.*define/ { print $$1 " " $$2 " " gensub("#","","g",$$3) }' $(@:.h=.s)  > $@
+	$(Q)gawk '/.*define/ { print $$1 " " $$2 " " gensub("#","","g",$$3) }' $(@:.h=.s)  > $@
 
 # Assembler offsets
 asm_offset.h: asm_offset.c

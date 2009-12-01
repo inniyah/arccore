@@ -4,7 +4,10 @@ HOST := $(shell uname)
 export prefix
 
 # If we are using codesourcery and cygwin..
-export CYGPATH=c:/cygwin/bin/cygpath
+ifneq ($(findstring CYGWIN,$(UNAME)),)
+cygpath:= $(shell cygpath -m $(shell which cygpath))
+export CYGPATH=$(cygpath)
+endif
 
 # ---------------------------------------------------------------------------
 # Compiler
@@ -50,16 +53,22 @@ CCOUT 		= -o $@
 
 CPP	= 	$(CC) -E
 
+comma = ,
+empty = 
+space = $(empty) $(empty)
+
 # Note!
 # Libs related to GCC(libgcc.a, libgcov.a) is located under 
 # lib/gcc/<machine>/<version>/<multilib>
 # Libs related to the library (libc.a,libm.a,etc) are under:
 # <machine>/lib/<multilib>
-gcc_lib_path := $(dir $(shell $(CC) $(CFLAGS) --print-libgcc-file-name $(conv_path)))
-lib_lib_path := $(dir $(shell $(CC) $(CFLAGS) --print-file-name\=libc.a $(conv_path)))
+
+# It seems some versions of make want "\=" and some "="
+# "=" - msys cpmake on windows 7 
+gcc_lib_path := "$(subst /libgcc.a,,$(shell $(CC) $(CFLAGS) --print-libgcc-file-name))" 
+lib_lib_path := "$(subst /libc.a,,$(shell $(CC) $(CFLAGS) --print-file-name=libc.a))"
 libpath-y += -L$(lib_lib_path)
 libpath-y += -L$(gcc_lib_path)
-
 # ---------------------------------------------------------------------------
 # Linker
 #

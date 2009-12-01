@@ -14,19 +14,6 @@
  * -------------------------------- Arctic Core ------------------------------*/
 
 
-
-
-
-
-
-
-/*
- * create.c
- *
- *  Created on: 2009-jan-16
- *      Author: mahi
- */
-
 #include <stdint.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -36,7 +23,9 @@
 #include "pcb.h"
 #include "Os.h"
 
-#define os_alloc(_x)	malloc(_x)
+extern caddr_t *sbrk(int);
+
+#define os_alloc(_x)	sbrk(_x)
 
 pcb_t * os_alloc_new_pcb( void ) {
 	void *h = os_alloc(sizeof(pcb_t));
@@ -67,10 +56,13 @@ TaskType Os_CreateIsr( void (*entry)(void ), uint8_t prio, const char *name )
 	strncpy(pcb->name,name,TASK_NAME_SIZE);
 	pcb->vector = -1;
 	pcb->prio = prio;
+	/* TODO: map to interrupt controller priority */
+	assert(prio<=OS_TASK_PRIORITY_MAX);
 	pcb->proc_type  = PROC_ISR2;
 	pcb->state = ST_SUSPENDED;
 	pcb->entry = entry;
 	pcb->stack.top = &stackTop;
+
 
 	return os_add_task(pcb);
 }

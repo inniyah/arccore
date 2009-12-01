@@ -30,6 +30,8 @@
 #include "arch_offset.h"
 #include "stm32f10x.h"
 #include "core_cm3.h"
+#include "arch.h"
+
 
 /**
  * Function make sure that we switch to supervisor mode(rfi) before
@@ -38,13 +40,14 @@
 
 void os_arch_first_call( void )
 {
-	// TODO: make swicth here... for now just call func.
+	// TODO: make switch here... for now just call func.
+	Irq_Enable();
 	os_sys.curr_pcb->entry();
 }
 
 void *os_arch_get_stackptr( void ) {
 
-	return __get_MSP();
+	return (void *)__get_MSP();
 }
 
 unsigned int os_arch_get_sc_size( void ) {
@@ -59,10 +62,11 @@ void os_arch_setup_context( pcb_t *pcb ) {
 
 	/* Set LR to start function */
 	if( pcb->proc_type == PROC_EXTENDED ) {
-		context[C_LR_OFF/4] = (uint32_t)os_proc_start_extended;
+		context[VGPR_LR_OFF/4] = (uint32_t)os_proc_start_extended;
 	} else if( pcb->proc_type == PROC_BASIC ) {
-		context[C_LR_OFF/4] = (uint32_t)os_proc_start_basic;
+		context[VGPR_LR_OFF/4] = (uint32_t)os_proc_start_basic;
 	}
+	os_arch_stack_set_endmark(pcb);
 // os_arch_setup_context_asm(pcb->stack.curr,NULL);
 }
 

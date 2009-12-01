@@ -13,20 +13,6 @@
  * for more details.
  * -------------------------------- Arctic Core ------------------------------*/
 
-
-
-
-
-
-
-
-/*
- * int_ctrl.c
- *
- *  Created on: Jul 13, 2009
- *      Author: mahi
- */
-
 #include "pcb.h"
 #include "sys.h"
 #include "internal.h"
@@ -34,19 +20,31 @@
 #include "hooks.h"
 #include "swap.h"
 #include "stm32f10x.h"
+#include "misc.h"
 #include "int_ctrl.h"
+#include "core_cm3.h"
 
-extern void * intc_vector_tbl[NUMBER_OF_INTERRUPTS_AND_EXCEPTIONS];
-extern uint8 intc_type_tbl[NUMBER_OF_INTERRUPTS_AND_EXCEPTIONS];
-
+extern void *Irq_VectorTable[NUMBER_OF_INTERRUPTS_AND_EXCEPTIONS];
 
 void IntCtrl_Init( void ) {
-
-
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
 }
 
 void IntCtrl_EOI( void ) {
 
+}
+
+#define ICSR_VECTACTIVE		0x1ff
+
+/**
+ * Get Active ISR number field.
+ * You can subtract 16 from the VECTACTIVE field to index into the Interrupt
+ * Clear/Set Enable, Interrupt Clear Pending/SetPending and Interrupt Priority
+ * Registers. INTISR[0] has vector number 16.
+ *
+ */
+static uint32_t NVIC_GetActiveVector( void) {
+	return (SCB->ICSR &  ICSR_VECTACTIVE);
 }
 
 /**
@@ -59,18 +57,24 @@ void IntCtrl_EOI( void ) {
 void *IntCtrl_Entry( void *stack_p )
 {
 	uint32_t vector = 0;
-	uint32_t *stack = (uint32_t *)stack_p;
-//	uint32_t exc_vector = (EXC_OFF_FROM_BOTTOM+EXC_VECTOR_OFF)  / sizeof(uint32_t);
+	uint32_t *stack;
 
-	if( intc_type_tbl[vector] == PROC_ISR1 ) {
-		// It's a function, just call it.
-		((func_t)intc_vector_tbl[vector])();
-		return stack;
-	} else {
-		// It's a PCB
-		// Let the kernel handle the rest,
-		return Os_Isr(stack, (void *)intc_vector_tbl[vector]);
-	}
+	Irq_Disable();
+	stack = (uint32_t *)stack_p;
+
+	/* 0. Set the default handler here....
+	 * 1. Grab the vector from the interrupt controller
+	 *    INT_CTRL_ST[VECTACTIVE]
+	 * 2. Irq_VectorTable[vector] is odd -> ISR1
+	 *    Irq_VectorTable[vector] is even-> ISR2
+	 */
+
+
+	vector = NVIC_GetActiveVector();
+
+	stack = Os_Isr(stack, (void *)Irq_VectorTable[vector]);
+	Irq_Enable();
+	return stack;
 }
 
 /**
@@ -96,6 +100,12 @@ void IntCtrl_AttachIsr1( void (*entry)(void), void *int_ctrl, uint32_t vector, u
    */
 }
 
+static inline int osPrioToCpuPio( uint8_t prio ) {
+	assert(prio<32);
+	return prio>>1;
+}
+
+
 /**
  * Attach a ISR type 2 to the interrupt controller.
  *
@@ -103,23 +113,33 @@ void IntCtrl_AttachIsr1( void (*entry)(void), void *int_ctrl, uint32_t vector, u
  * @param int_ctrl
  * @param vector
  */
-void IntCtrl_AttachIsr2(TaskType tid,void *int_ctrl,uint32_t vector ) {
+void IntCtrl_AttachIsr2(TaskType tid,void *int_ctrl,IrqType vector ) {
 	pcb_t *pcb;
+	NVIC_InitTypeDef irqInit;
 
 	pcb = os_find_task(tid);
+	Irq_VectorTable[vector+16] = (void *)pcb;
+
+	irqInit.NVIC_IRQChannel = vector;
+	irqInit.NVIC_IRQChannelPreemptionPriority = osPrioToCpuPio(pcb->prio);
+	irqInit.NVIC_IRQChannelSubPriority = 0;
+	irqInit.NVIC_IRQChannelCmd = ENABLE;
+
 
 	// TODO: Same as for AttachIsr1
-
+	NVIC_Init(&irqInit);
 }
 
 
 /**
- * Generates a soft interrupt
+ * Generates a soft interrupt, ie sets pending bit.
+ * This could also be implemented using ISPR regs.
+ *
  * @param vector
  */
 void IntCtrl_GenerateSoftInt( IrqType vector ) {
 
-	// NVIC_STIR
+	NVIC->STIR = (vector + 16);
 }
 
 /**

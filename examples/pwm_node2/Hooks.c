@@ -25,7 +25,7 @@
 #include <assert.h>
 #define USE_TRACE	1
 #include "Trace.h"
-//#include "Hooks.h"
+#include "Mcu.h"
 
 
 #if 0
@@ -34,7 +34,6 @@
 #if !defined(USE_SIMULATOR)
 // Quick fix
 //#include "Kernel_Offset.h"
-#include "Mcu.h"
 
 extern uint8_t pcb_list[];
 
@@ -57,9 +56,6 @@ void StartupHook( void ) {
 	uint32_t sys_freq = McuE_GetSystemClock();
 
 	dbg_printf("Sys clock %d Hz\n",sys_freq);
-	Frt_Init();
-	Frt_Start(sys_freq/1000);
-
 }
 
 void ShutdownHook( StatusType Error ) {

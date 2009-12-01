@@ -6,6 +6,10 @@ RELDIR := $(subst $(TOPDIR)/,,$(CURDIR))
 # Create the target name... 
 target := $(subst /,_,$(SUBDIR))
 
+#goal=$(subst /cygdrive/c/,c:/,$(abspath $@))
+#goal=$(abspath $@)
+goal=$@
+
 #===== MODULE CONFIGURATION =====
 include $(ROOTDIR)/boards/$(BOARDDIR)/build_config.mk
 -include ../build_config.mk
@@ -60,8 +64,17 @@ config:
 	@echo "example modules:" $(MOD_USE)
 	@echo $(MOD) ${def-y}
 
+
+$(ROOTDIR)/binaries:
+	@mkdir -p $@
+
 # build- targets are "end" target that the included makefile want's to build
-all: $(build-lib-y) $(build-exe-y)
+all: $(build-exe-y) $(build-hex-y) $(build-lib-y) $(ROOTDIR)/binaries
+	@cp -v $(build-lib-y) $(build-exe-y) $(build-hex-y) $(ROOTDIR)/binaries
+
+#.PHONY post_process:
+#post_process:: $(ROOTDIR)/binaries
+	 
 
 # Determine what kind of filetype to build from  
 VPATH += $(ROOTDIR)/$(SUBDIR)/src
@@ -78,42 +91,44 @@ inc-y += ../include
 
 # Compile
 %.o: %.c
-	@echo "  >> CC $<"
-	$(Q)$(CC) -c $(CFLAGS) -o $(abspath $@) $(addprefix -I ,$(inc-y)) $(addprefix -D,$(def-y)) $(realpath $<)
+	@echo "  >> CC $(notdir $<)"
+	$(Q)$(CC) -c $(CFLAGS) -o $(goal) $(addprefix -I ,$(inc-y)) $(addprefix -D,$(def-y)) $(abspath $<)
 
 # Assembler
 
 %.o: %.s
-	@echo "  >> AS $< $(ASFLAGS)"
-	$(Q)$(AS) $(ASFLAGS) -o $@ $<
+	@echo "  >> AS $(notdir $<)  $(ASFLAGS)"
+	$(Q)$(AS) $(ASFLAGS) -o $(goal) $<
 	
-#$(Q)$(AS) -o /cygdrive/c/apa.o $<
-
-
 # PP Assembler	
-.SECONDARY %.s:
+#.SECONDARY %.s:
 
-%.s: %.S
-	@echo " >> CPP $<"
-	$(Q)$(CPP) -o $@ $(addprefix -I ,$(inc-y)) $(addprefix -D,$(def-y)) $<
+%.s: %.sx
+	@echo "  >> CPP $(notdir $<)"
+	$(Q)$(CPP) -x assembler-with-cpp -o $@ $(addprefix -I ,$(inc-y)) $(addprefix -D,$(def-y)) $<
+
 
 #	@cat $@ 
 	
 .PHONY $(ROOTDIR)/libs:
 $(ROOTDIR)/libs:
-	mkdir -p $@
+	$(Q)mkdir -p $@
 
 dep-y += $(ROOTDIR)/libs
 	
 # lib	
 $(build-lib-y): $(dep-y) $(obj-y)
-	@echo "  >> AR $(RELDIR)/$@"   
+	@echo "  >> AR $@"   
 	$(Q)$(AR) -r -o $@ $(obj-y) 2> /dev/null
 
+$(build-hex-y): $(build-exe-y)
+	@echo "  >> OBJCOPY $@"   
+	$(Q)$(CROSS_COMPILE)objcopy -O ihex $< $@
+
 # Could use readelf -S instead of parsing the *.map file.
-$(build-exe-y): $(obj-y) $(sim-y) $(libitem-y) 
+$(build-exe-y): $(obj-y) $(sim-y) $(libitem-y) $(ldcmdfile-y)
 	@echo "  >> LD $@"
-	$(LD) $(LDFLAGS) $(ldcmdfile-y) -o $@ $(libpath-y) --start-group $(obj-y) $(lib-y) $(libitem-y) --end-group $(LDMAPFILE)
+	$(Q)$(LD) $(LDFLAGS) -T $(ldcmdfile-y) -o $@ $(libpath-y) --start-group $(obj-y) $(lib-y) $(libitem-y) --end-group $(LDMAPFILE)
 	@echo "Image size: (decimal)"
 	@gawk --non-decimal-data 	'/^\.text/ { print "  text:"  $$3+0 " bytes"; rom+=$$3 };\
 	 							/^\.data/ { print "  data:"  $$3+0 " bytes"; rom+=$$3; ram+=$$3}; \

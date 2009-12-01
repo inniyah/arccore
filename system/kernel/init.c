@@ -14,13 +14,6 @@
  * -------------------------------- Arctic Core ------------------------------*/
 
 
-
-
-
-
-
-
-
 #include "Os.h"
 #include "sys.h"
 #include <stdlib.h>
@@ -38,8 +31,10 @@
 #include "Trace.h"
 
 
-
 extern void Oil_GetInterruptStackInfo( stack_t *stack );
+extern uint32_t McuE_GetSystemClock( void );
+extern OsTickType OsTickFreq;
+
 sys_t os_sys;
 
 /**
@@ -150,6 +145,7 @@ void InitOS( void ) {
 	// TODO: Isn't this just EXTENED tasks ???
 	for( i=0; i < Oil_GetTaskCnt(); i++) {
 		tmp_pcb = os_get_pcb(i);
+		assert(tmp_pcb->prio<=OS_TASK_PRIORITY_MAX);
 		os_pcb_rom_copy(tmp_pcb,os_get_rom_pcb(i));
 		if( !(tmp_pcb->proc_type & PROC_ISR) ) {
 			os_pcb_make_virgin(tmp_pcb);
@@ -190,6 +186,14 @@ static void os_start( void ) {
 		}
 	}
 
+	// Activate the systick interrupt
+	{
+		uint32_t sys_freq = McuE_GetSystemClock();
+		Frt_Init();
+		Frt_Start(sys_freq/OsTickFreq);
+	}
+
+
 	// Swap in prio proc.
 	{
 		// FIXME: Do this in a more structured way.. setting os_sys.curr_pcb manually is not the way to go..
@@ -216,7 +220,7 @@ void noooo( void ) {
 	while(1);
 }
 
-extern EcuM_Init();
+extern void EcuM_Init();
 int main( void )
 {
 	EcuM_Init();
@@ -244,7 +248,6 @@ void StartOS( AppModeType Mode ) {
 
 }
 
-
 /**
  * OS shutdown
  *
@@ -257,7 +260,9 @@ void ShutdownOS( StatusType Error ) {
 		os_sys.hooks->ShutdownHook(Error);
 	}
 	/* TODO: */
-	while(1);
+	while(1) {
+
+	}
 
 }
 

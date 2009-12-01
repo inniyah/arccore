@@ -14,13 +14,6 @@
  * -------------------------------- Arctic Core ------------------------------*/
 
 
-
-
-
-
-
-
-
 #include "Os.h"
 #include "Mcu.h"
 
@@ -114,8 +107,6 @@ void StartupHook( void ) {
 	dbg_printf("## StartupHook\n");
 
 	dbg_printf("Sys clock %d Hz\n",sys_freq);
-	Frt_Init();
-	Frt_Start(sys_freq/1000);
 }
 
 void ShutdownHook( StatusType Error ) {
@@ -150,9 +141,10 @@ void ErrorHook( StatusType Error ) {
 	case OSServiceId_SetRelAlarm:
 	{
 		// Read the arguments to the faulty functions...
+		/* (Commented to remove warnings)
 		AlarmType alarm_id = OSError_SetRelAlarm_AlarmId;
 		TickType increment = OSError_SetRelAlarm_Increment;
-		TickType cycle = OSError_SetRelAlarm_Cycle;
+		TickType cycle = OSError_SetRelAlarm_Cycle;	*/
 		// ... Handle this some way.
 		break;
 	}
