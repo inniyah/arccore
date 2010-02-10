@@ -132,6 +132,9 @@ inc-$(USE_PDUR) += $(ROOTDIR)/communication/PduR
 inc-$(USE_COM) += $(ROOTDIR)/communication/PduR
 vpath-$(USE_PDUR) += $(ROOTDIR)/communication/PduR
 
+# IO Hardware Abstraction
+obj-$(USE_IOHWAB) += IoHwAb.o
+
 #tests
 #obj-y += RunTests.o
 #obj-$(USE_CAN) += can_test.o
