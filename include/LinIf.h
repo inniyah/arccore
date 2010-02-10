@@ -13,12 +13,12 @@
  * for more details.
  * -------------------------------- Arctic Core ------------------------------*/
 
+/** @addtogroup LinIf LIN Interface
+ *  @{ */
 
-
-
-
-
-
+/** @file LinIf.h
+ * API and type definitions for LIN Interface.
+ */
 
 #ifndef LINIF_H_
 #define LINIF_H_
@@ -37,17 +37,18 @@
 #include "ComM_Types.h"
 
 
-
-
-/* --- Service IDs --- */
+/** @name Service id's */
+//@{
 #define LINIF_INIT_SERVICE_ID               0x00
 #define LINIF_GETVERSIONINFO_SERVICE_ID     0x03
 #define LINIF_SCHEDULEREQUEST_SERVICE_ID    0x05
 #define LINIF_GOTOSLEEP_SERVICE_ID    		0x06
 #define LINIF_WAKEUP_SERVICE_ID     		0x07
 #define LINIF_MAINFUNCTION_SERVICE_ID       0x80
+//@}
 
-/* --- Error codes --- */
+/** @name Error Codes */
+//@{
 #define LINIF_E_UNINIT 0x00
 #define LINIF_E_ALREADY_INITIALIZED 0x10
 #define LINIF_E_NONEXISTENT_CHANNEL 0x20
@@ -58,6 +59,7 @@
 #define LINIF_E_RESPONSE 0x52 //Assigned
 #define LINIF_E_NC_NO_RESPONSE 0x53 //Assigned by DEM
 #define LINIF_E_CHANNEL_X_SLAVE_Y 0x54 //Assigned by DEM
+//@}
 
 #if (LINIF_VERSION_INFO_API == STD_ON)
 void LinIf_GetVersionInfo( Std_VersionInfoType *versionInfo );
@@ -79,3 +81,4 @@ Std_ReturnType LinIf_WakeUp(NetworkHandleType Channel);
 void LinIf_MainFunction();
 
 #endif
+/** @} */
