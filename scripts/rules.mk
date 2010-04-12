@@ -28,11 +28,18 @@ define CFG_template
 	def-y += CFG_$(1)
 endef
 
-
 $(foreach mod,$(MOD_AVAIL),$(eval $(call MOD_AVAIL_template,${mod})))
 $(foreach mod,$(MOD_USE),$(eval $(call MOD_USE_template,${mod})))
 $(foreach mod,$(CFG),$(eval $(call CFG_template,${mod})))
 def-y += $(ARCH) $(ARCH_FAM) $(ARCH_MCU) 
+
+# Select console / debug
+$(foreach mod,$(SELECT_OS_CONSOLE),$(eval $(call MOD_USE_template,${mod})))
+$(foreach mod,$(SELECT_CONSOLE),$(eval $(call MOD_USE_template,${mod})))
+
+def-y += SELECT_OS_CONSOLE=$(if $(SELECT_OS_CONSOLE),$(SELECT_OS_CONSOLE),TTY_NONE)
+def-y += SELECT_CONSOLE=$(if $(SELECT_CONSOLE),$(SELECT_CONSOLE),TTY_NONE)
+def-$(USE_DEBUG_PRINTF) += USE_DEBUG_PRINTF 
 
 not_avail = $(filter-out $(MOD_AVAIL),$(MOD_USE))
 ifneq ($(not_avail),)
@@ -54,8 +61,9 @@ include $(ROOTDIR)/scripts/cc_$(COMPILER).mk
 include ../makefile
 
 inc-y += $(ROOTDIR)/include
-inc-$(CFG_PPC) += $(ROOTDIR)/include/ppc
-inc-$(CFG_ARM) += $(ROOTDIR)/include/arm
+#inc-$(CFG_PPC) += $(ROOTDIR)/include/ppc
+#inc-$(CFG_ARM) += $(ROOTDIR)/include/arm
+inc-y += $(ROOTDIR)/include/$(ARCH_FAM)
 
 .PHONY config:
 
@@ -105,7 +113,7 @@ inc-y += ../include
 
 %.s: %.sx
 	@echo "  >> CPP $(notdir $<)"
-	$(Q)$(CPP) -x assembler-with-cpp -o $@ $(addprefix -I ,$(inc-y)) $(addprefix -D,$(def-y)) $<
+	$(Q)$(CPP) -x assembler-with-cpp -E -o $@ $(addprefix -I ,$(inc-y)) $(addprefix -D,$(def-y)) $<
 
 
 #	@cat $@ 
@@ -126,14 +134,18 @@ $(build-hex-y): $(build-exe-y)
 	$(Q)$(CROSS_COMPILE)objcopy -O ihex $< $@
 
 # Could use readelf -S instead of parsing the *.map file.
-$(build-exe-y): $(obj-y) $(sim-y) $(libitem-y) $(ldcmdfile-y)
+$(build-exe-y): $(dep-y) $(obj-y) $(sim-y) $(libitem-y) $(ldcmdfile-y)
 	@echo "  >> LD $@"
 	$(Q)$(LD) $(LDFLAGS) -T $(ldcmdfile-y) -o $@ $(libpath-y) --start-group $(obj-y) $(lib-y) $(libitem-y) --end-group $(LDMAPFILE)
+ifdef CFG_MC912DG128A
+	@$(CROSS_COMPILE)objdump -h $@ | gawk -f $(ROOTDIR)/scripts/hc1x_memory.awk
+else
 	@echo "Image size: (decimal)"
 	@gawk --non-decimal-data 	'/^\.text/ { print "  text:"  $$3+0 " bytes"; rom+=$$3 };\
 	 							/^\.data/ { print "  data:"  $$3+0 " bytes"; rom+=$$3; ram+=$$3}; \
 	 							/^\.bss/ { print "  bss :"  $$3+0 " bytes"; ram+=$$3}; \
 	 							END { print "  ROM: ~" rom " bytes"; print "  RAM: ~" ram " bytes"}' $(subst .elf,.map,$@)
+endif
 	@echo "  >>>>>>>  DONE  <<<<<<<<<"
 	
 

@@ -146,10 +146,10 @@
 #include <stdlib.h>
 
 //#define USE_TRACE 1
-//#define USE_DEBUG	1
+//#define USE_LDEBUG_PRINTF	1
 #undef DEBUG_LVL
 #define DEBUG_LVL DEBUG_HIGH
-#include "Trace.h"
+#include "debug.h"
 
 #define MODULE_NAME 	"/driver/Spi"
 
@@ -1003,11 +1003,11 @@ static void Spi_InitController( uint32 unit ) {
 	spiHw->MCR.B.MDIS = 0;
 
 #if defined(__DMA_INT)
-	IntCtrl_InstallVector(Spi_Isr_DMA, 16 , 1, CPU_Z1);
+	Irq_InstallVector(Spi_Isr_DMA, 16 , 1, CPU_Z1);
 #endif
 
 	// Install EOFQ int..
-	IntCtrl_InstallVector(Spi_Isr_Info[unit].entry, Spi_Isr_Info[unit].vector,
+	Irq_InstallVector(Spi_Isr_Info[unit].entry, Spi_Isr_Info[unit].vector,
 	                       Spi_Global.configPtr->SpiHwConfig[unit].IsrPriority, Spi_Isr_Info[unit].cpu);
 }
 
@@ -1232,7 +1232,7 @@ static void Spi_JobWrite( Spi_JobType jobIndex ) {
 		extChBuff = &Spi_Global.extBufPtr[channelIndex];
 
 		if( extChBuff->active == 0 ) {
-			dbg_printf("Err:External buffer %d@job %d not setup\n",channelIndex,jobIndex);
+			LDEBUG_PRINTF("Err:External buffer %d@job %d not setup\n",channelIndex,jobIndex);
 			assert(0);
 		}
 
@@ -1373,7 +1373,7 @@ static void Spi_SeqWrite( Spi_SequenceType seqIndex, Spi_CallTypeType sync ) {
 	  DEBUG(DEBUG_MEDIUM,"%s: sync/polled mode\n",MODULE_NAME);
 	}
 
-#if defined(USE_DEBUG) && ( DEBUG_LVL <= DEBUG_HIGH )
+#if defined(USE_LDEBUG_PRINTF) && ( DEBUG_LVL <= DEBUG_HIGH )
 	Spi_PrintSeqInfo( seqConfig );
 #endif
 

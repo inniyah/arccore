@@ -1,4 +1,5 @@
 obj-$(CFG_PPC) += crt0.o
+obj-$(CFG_HCS12D) += crt0.o
 vpath-$(CFG_ARM_CM3) += $(ARCH_PATH-y)kernel
 obj-$(CFG_ARM_CM3) += system_stm32f10x.o
 obj-$(CFG_ARM_CM3) += core_cm3.o
@@ -57,6 +58,8 @@ obj-$(USE_PORT) += Port_Cfg.o
 obj-$(USE_ADC) += Adc.o
 obj-$(USE_ADC) += Adc_Cfg.o
 
+# Include the kernel
+include $(ROOTDIR)/system/kernel/makefile
 
 # Spi
 obj-$(USE_SPI) += Spi.o
@@ -167,14 +170,19 @@ obj-y += xtoa.o
 obj-y += arc.o
 #obj-y += malloc.o
 obj-$(USE_RAMLOG) += ramlog.o
-obj-$(USE_SIMPLE_PRINTF) += printf.o
+
+# If we have configured console output we include printf. 
+# Overridden to use lib implementation with CFG_USE_NEWLIB_PRINTF
+ifndef (CFG_USE_NEWLIB_PRINTF)
+ifneq (,$(SELECT_CONSOLE) $(SELECT_OS_CONSOLE))
+obj-y += printf.o
+endif
+endif
 
 VPATH += $(ROOTDIR)/common
 
 obj-y += newlib_port.o
 obj-y += $(obj-y-y)
-
-#def-y += CC_KERNEL
 
 vpath-y += $(ROOTDIR)/$(ARCH_PATH-y)/kernel
 vpath-y += $(ROOTDIR)/$(ARCH_PATH-y)/drivers

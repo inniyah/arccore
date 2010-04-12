@@ -13,46 +13,39 @@
  * for more details.
  * -------------------------------- Arctic Core ------------------------------*/
 
-
-
-
-
-
-
-
 #ifndef EXT_CONFIG_H_
 #define EXT_CONFIG_H_
 
-/* Created in Oil_Config */
-struct pcb_s;
-struct alarm_obj_s;
-struct counter_obj_s;
-struct sched_table_s;
-//struct app_s;
-struct rom_app_s;
-struct resource_obj_s;
-struct rom_app_s;
-struct message_obj_s;
-//extern struct pcb_s pcb_list[];
-//extern struct app_s app_list[];
-//extern struct rom_app_s rom_app_list[];
+/* Created in Os_CfgConfig */
+struct OsPcb;
+struct OsAlarm;
+struct OsCounter;
+struct OsSchTbl;
+struct OsResource;
+struct OsMessage;
+#if ( OS_SC1 == STD_ON ) || ( OS_SC4 == STD_ON )
+struct OsRomApplication;
+#endif
 
-int Oil_GetApplCnt(void);
-struct rom_app_s *Oil_GetApplObj( ApplicationType application_id );
-int Oil_GetTaskCnt(void);
-void *Oil_GetIdleProcStack(void);
-int Oil_GetResourceCnt(void);
-StatusType Oil_GetAlarmBase(AlarmType alarm_id, AlarmBaseRefType info);
-uint32 Oil_GetAlarmCnt(void);
-struct alarm_obj_s *Oil_GetAlarmObj( AlarmType alarm_id );
-struct counter_obj_s *Oil_GetCounter(CounterType);
-uint32 Oil_GetCounterCnt(void );
-uint32 Oil_GetSchedCnt( void );
-struct sched_table_s *Oil_GetSched( ScheduleTableType sched_id );
-uint32 Oil_GetServiceCnt( void ) ;
-struct resource_obj_s *Oil_GetResource( ResourceType resource );
+#if ( OS_SC1 == STD_ON ) || ( OS_SC4 == STD_ON )
+int Os_CfgGetApplCnt(void);
+struct OsRomApplication *Os_CfgGetApplObj( ApplicationType application_id );
+#endif
+int Os_CfgGetTaskCnt(void);
+void *Os_CfgGetIdleProcStack(void);
+int Os_CfgGetResourceCnt(void);
+StatusType Os_CfgGetAlarmBase(AlarmType alarm_id, AlarmBaseRefType info);
+uint32 Os_CfgGetAlarmCnt(void);
+struct OsAlarm *Os_CfgGetAlarmObj( AlarmType alarm_id );
+struct OsCounter *Os_CfgGetCounter(CounterType);
+uint32 Os_CfgGetCounterCnt(void );
+uint32 Os_CfgGetSchedCnt( void );
+struct OsSchTbl *Os_CfgGetSched( ScheduleTableType sched_id );
+uint32 Os_CfgGetServiceCnt( void ) ;
+struct OsResource *Os_CfgGetResource( ResourceType resource );
 
-struct message_obj_s *Oil_GetMessage(MessageType message_id);
-uint32 Oil_GetMessageCnt(void );
+struct OsMessage *Os_CfgGetMessage(MessageType message_id);
+uint32 Os_CfgGetMessageCnt(void );
+void Os_CfgValidate( void );
 
 #endif /*EXT_CONFIG_H_*/

@@ -1,4 +1,3 @@
-
 # build with:
 # make subdir1 			- build the subdir1 
 # make subdir1/subdir2	- build subdir2
@@ -30,13 +29,19 @@ else
 	export SED=sed
 endif
 
-USE_DBG_PRINTF?=y
 
 Q?=@
 export Q
 export TOPDIR = $(CURDIR)
-export RELEASE = n
 export PATH
+
+# Select default console
+# RAMLOG | TTY_T32 | TTY_WINIDEA 
+export SELECT_OS_CONSOLE
+export SELECT_CONSOLE
+export USE_DEBUG_PRINTF
+export SELECT_OPT?=OPT_RELEASE
+export CFG_$(SELECT_OPT)=y
 
 ifneq ($(filter clean_all,$(MAKECMDGOALS)),clean_all)
   ifeq (${BOARDDIR},)
@@ -47,10 +52,7 @@ endif
 USE_T32_SIM?=n
 export USE_T32_SIM
 
-export BUILD_TREE=y
-export RELEASE_TREE=n
-
-override BDIR := system/kernel ${BDIR} 
+# override BDIR := system/kernel ${BDIR} 
 
 # Tools
 # Ugly thing to make things work under cmd.exe 
@@ -65,10 +67,10 @@ export objdir = obj_$(BOARDDIR)
 .PHONY: help
 help:
 	@echo "Make kernel and a simple example"
-	@echo "  > make BOARDDIR=mpc551xsim CROSS_COMPILE=/opt/powerpc-eabi/bin/powerpc-eabi- BDIR=system/kernel,examples/simple all"
+	@echo "  > make BOARDDIR=mpc551xsim CROSS_COMPILE=/opt/powerpc-eabi/bin/powerpc-eabi- BDIR=examples/simple all"
 	@echo ""
 	@echo "Save the config (CROSS_COMPILE and BDIR)"
-	@echo "  > make BOARDDIR=mpc551xsim CROSS_COMPILE=/opt/powerpc-eabi/bin/powerpc-eabi- BDIR=system/kernel,examples/simple save"
+	@echo "  > make BOARDDIR=mpc551xsim CROSS_COMPILE=/opt/powerpc-eabi/bin/powerpc-eabi- BDIR=examples/simple save"
 	@echo ""
 	@echo "Clean"
 	@echo "  > make clean"
@@ -80,9 +82,6 @@ help:
 	@echo "  CROSS_COMPILE =$(CROSS_COMPILE)"
 	@echo ""
 	
-def-$(USE_DBG_PRINTF) += USE_DBG_PRINTF
-
-
 export CFG_MCU 
 export CFG_CPU
 export MCU

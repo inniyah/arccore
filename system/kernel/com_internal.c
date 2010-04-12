@@ -13,20 +13,8 @@
  * for more details.
  * -------------------------------- Arctic Core ------------------------------*/
 
-
-
-
-
-
-
-
-
 #include "Os.h"
-#include "kernel.h"
-#include "ext_config.h"
-#include <assert.h>
-#include <string.h>
-
+#include "internal.h"
 
 /* Queued message
  *   The messages are put in a queue. Copied to the destination...
@@ -46,10 +34,10 @@
 StatusType SendMessage( MessageType message_id, ApplicationDataRef dataRef ) {
 
 
-	message_obj_t *msg;
+	OsMessageType *msg;
 
 	// Is the message valid ?
-	if( message_id > Oil_GetMessageCnt() ) {
+	if( message_id > Os_CfgGetMessageCnt() ) {
 		// TODO: Add error hook here
 		return E_COM_ID;
 	}
@@ -60,7 +48,7 @@ StatusType SendMessage( MessageType message_id, ApplicationDataRef dataRef ) {
 	}
 
 	// Copy the data to interal buffers
-	msg = Oil_GetMessage(message_id);
+	msg = Os_CfgGetMessage(message_id);
 
 	// copy data
 	memcpy(msg->data,dataRef,msg->data_size);
@@ -87,11 +75,11 @@ StatusType SendMessage( MessageType message_id, ApplicationDataRef dataRef ) {
 }
 
 StatusType ReceiveMessage( MessageType message_id, ApplicationDataRef dataRef ) {
-	message_obj_t *msg;
+	OsMessageType *msg;
 	// Check if valid
 
 	// Copy from container to dataRef
-	msg = Oil_GetMessage(message_id);
+	msg = Os_CfgGetMessage(message_id);
 	memcpy(dataRef,msg->data,msg->data_size);
 
 	return E_OK;

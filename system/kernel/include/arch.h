@@ -13,13 +13,6 @@
  * for more details.
  * -------------------------------- Arctic Core ------------------------------*/
 
-
-
-
-
-
-
-
 /*
  * Porting interface. Should really be called port.h or something.
 
@@ -32,6 +25,20 @@
 
 #define STACK_PATTERN	0x42
 
+/* See Os_ArchReboot() */
+#define OS_REBOOT_WARM		0
+#define OS_REBOOT_COLD		1
+
+
+/**
+ * Set the stack pointer to sp and call function f.
+ *
+ * @param sp    Pointer to the stack
+ * @param f     Pointer to the function to call.
+ *
+ */
+void Os_ArchSetSpAndCall(void *sp, void (*f)(void) );
+
 /**
  * Swap context.
  * Sets the current pcb
@@ -39,15 +46,15 @@
  * @param old - old ptr to pcb
  * @return
  */
-void os_arch_swap_context(void *old,void *new);
+void Os_ArchSwapContext(void *old,void *new);
 
 /**
  * Swap context for the first time for a task
  *
  * The only way to call this function right now is to:
- *   os_swap_context_to(NULL,<pcb>);
+ *   Os_TaskSwapContextTo(NULL,<pcb>);
  */
-void os_arch_swap_context_to(void *old,void *new);
+void Os_ArchSwapContextTo(void *old,void *new);
 
 /**
  * Setup a pcb before use.
@@ -60,14 +67,14 @@ void os_arch_swap_context_to(void *old,void *new);
  *
  * @param pcb Ptr to pcb
  */
-void os_arch_setup_context( pcb_t *pcb );
+void Os_ArchSetupContext( OsPcbType *pcb );
 
 /**
  * Get current stack pointer
  *
  * @return current stack pointer
  */
-void *os_arch_get_stackptr( void );
+void *Os_ArchGetStackPtr( void );
 
 /**
  * Initialize the hardware.
@@ -75,7 +82,7 @@ void *os_arch_get_stackptr( void );
  * - interrupt controller
  * - timers
  */
-void os_arch_init( void );
+void Os_ArchInit( void );
 
 /**
  * Function that is used when task entry is called for the
@@ -85,7 +92,22 @@ void os_arch_init( void );
  * When user mode is supported a switch to user mode must be done
  * in some way. A trap maybe?
  */
-void os_arch_first_call( void );
+void Os_ArchFirstCall( void );
+
+
+/**
+ * Reboot the OS. Can be used as soft reset but also to get a controlled
+ * reboot of the OS, but saving state.
+ *
+ * This should probably:
+ * - Setup the stack pointer to same as in crt0.
+ * - Jump to main?!
+ * - De-init for some devices?
+ *
+ * @param type OS_REBOOT_COLD - Reboot cold. It quite close to reset.
+ *             OS_REBOOT_WARM - Reboot warm. Does not run init on sections (crt0)
+ */
+void Os_ArchReboot( int type );
 
 
 /**
@@ -93,37 +115,9 @@ void os_arch_first_call( void );
  *
  * @return The small context size in bytes
  */
-unsigned int os_arch_get_sc_size( void );
+unsigned int Os_ArchGetScSize( void );
 
-#if 0
-
-void *os_arch_get_stack_usage( pcb_t * );
-
-_Bool os_arch_stack_endmark_ok( pcb_t *);
-#endif
-
-static inline void os_arch_stack_set_endmark( pcb_t *pcb ) {
-	uint8_t *end = pcb->stack.top;
-	*end = STACK_PATTERN;
-}
-
-static inline _Bool os_arch_stack_endmark_ok( pcb_t *pcb ) {
-	uint8_t *end = pcb->stack.top;
-	return ( *end == STACK_PATTERN);
-}
-
-
-static inline void *os_arch_get_stack_usage( pcb_t *pcb ) {
-
-	uint8_t *p = pcb->stack.curr;
-	uint8_t *end = pcb->stack.top;
-
-	while( (*end == STACK_PATTERN) && (end<p)) {
-			end++;
-		}
-	return (void *)end;
-}
-
+void Os_ArchSetTaskEntry(OsPcbType *pcbPtr );
 
 
 #endif /*ARCH_H_*/

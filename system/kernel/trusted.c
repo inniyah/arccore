@@ -15,7 +15,7 @@
 
 
 
-
+#error Do not use. Its only supported in SC3 and SC4
 
 
 
@@ -26,26 +26,26 @@
 #include "ext_config.h"
 
 
-StatusType CallTrustedFunction(	TrustedFunctionIndexType ix, 
-								TrustedFunctionParameterRefType param ) 
+StatusType CallTrustedFunction(	TrustedFunctionIndexType ix,
+								TrustedFunctionParameterRefType param )
 {
 
-	/* INFO: Can't find anything in the autosar documentation about calling a 
+	/* INFO: Can't find anything in the autosar documentation about calling a
 	 *       trusted function directly from a trusted application(not calling
-	 *       CallTrustedFunction() at all). So this code checks if in user mode 
-	 *       or not. 
-	 * 
-	 *       In Linux you either call the function directly e.g "getpid()" when 
+	 *       CallTrustedFunction() at all). So this code checks if in user mode
+	 *       or not.
+	 *
+	 *       In Linux you either call the function directly e.g "getpid()" when
 	 *       in priv. mode and through "syscall(SYS_getpid)" when in user mode.
 	 */
 
 	/* According to OS097 we can call this function from both trusted and non-trusted application */
 
-	if( ix > Oil_GetServiceCnt() ) {
+	if( ix > Os_CfgGetServiceCnt() ) {
 		return E_OS_SERVICEID;
 	}
-	
+
 	CallService(ix,param);
-	
+
 	return E_OK;
 }
