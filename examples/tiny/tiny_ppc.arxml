@@ -24,7 +24,7 @@
                 <SD GID="MCU">Undefined MCU</SD>
                 <SD GID="AUTHOR">ArcCore AB</SD>
                 <SD GID="COPYRIGHT">Copyright ArcCore AB 2010</SD>
-                <SD GID="GENDIR"></SD>
+                <SD GID="GENDIR"/>
               </SDG>
             </SDGS>
           </ADMIN-DATA>
@@ -259,7 +259,7 @@
                   <REFERENCE-VALUES>
                     <REFERENCE-VALUE>
                       <DEFINITION-REF DEST="REFERENCE-PARAM-DEF">/ArcCore/Os/OsAlarm/OsAlarmAction/OsAlarmSetEvent/OsAlarmSetEventRef</DEFINITION-REF>
-                      <VALUE-REF DEST="CONTAINER">/tiny_ppc/Os/EVENT_0</VALUE-REF>
+                      <VALUE-REF DEST="CONTAINER">/tiny_ppc/Os/EVENT_2</VALUE-REF>
                     </REFERENCE-VALUE>
                     <REFERENCE-VALUE>
                       <DEFINITION-REF DEST="REFERENCE-PARAM-DEF">/ArcCore/Os/OsAlarm/OsAlarmAction/OsAlarmSetEvent/OsAlarmSetEventTaskRef</DEFINITION-REF>
