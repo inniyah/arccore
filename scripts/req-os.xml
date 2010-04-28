@@ -17,7 +17,7 @@
 		<ns1:Class>1,2,3,4</ns1:Class>
 		<ns1:Component>code</ns1:Component>
 		<ns1:Verification>code</ns1:Verification>
-		<ns1:Description>If in a call to SetRelAlarm() the parameter “increment�? is set to zero, the
+		<ns1:Description>If in a call to SetRelAlarm() the parameter “increment” is set to zero, the
 service shall return E_OS_VALUE in standard and extended status .</ns1:Description>
 	</ns1:Req>
 	<ns1:Req id="OS424">
@@ -216,14 +216,14 @@ the Final Expiry Point.</ns1:Description>
 		<ns1:Component>code</ns1:Component>
 		<ns1:Verification>code</ns1:Verification>
 		<ns1:Description>The Operating System shall provide a service to start the processing of a
-schedule table at an absolute value “Start�? on the underlying counter. (The Initial Expiry Point shall be processed when the value of the underlying counter equals Start + InitialOffset).</ns1:Description>
+schedule table at an absolute value “Start” on the underlying counter. (The Initial Expiry Point shall be processed when the value of the underlying counter equals Start + InitialOffset).</ns1:Description>
 	</ns1:Req>
 	<ns1:Req id="OS347">
 		<ns1:Class>1,2,3,4</ns1:Class>
 		<ns1:Component>code</ns1:Component>
 		<ns1:Verification>code</ns1:Verification>
 		<ns1:Description>The Operating System shall provide a service to  start the processing of a
-schedule table at “Offset�? relative to the “Now�? value on the underlying counter (The
+schedule table at “Offset” relative to the “Now” value on the underlying counter (The
 Initial Expiry Point shall be processed  when the value of the underlying counter
 equals Now + Offset + InitialOffset).</ns1:Description>
 	</ns1:Req>
@@ -309,7 +309,7 @@ drive counter associated with the schedule table. This means that a tick on the 
 		<ns1:Component>code</ns1:Component>
 		<ns1:Verification>code</ns1:Verification>
 		<ns1:Description>An explicitly synchronized schedule table started at an absolute or relative
-counter value shall have state “running�? when the service call returns.</ns1:Description>
+counter value shall have state “running” when the service call returns.</ns1:Description>
 	</ns1:Req>
 	<ns1:Req id="OS201">
 		<ns1:Class>2,4</ns1:Class>
@@ -323,7 +323,7 @@ synchronized schedule table. The Initial Expiry Point will be processed after (D
 		<ns1:Component>code</ns1:Component>
 		<ns1:Verification>code</ns1:Verification>
 		<ns1:Description>An explicitly synchronized schedule table started synchronously shall have
-state “waiting�? when the service call returns.</ns1:Description>
+state “waiting” when the service call returns.</ns1:Description>
 	</ns1:Req>
 	<ns1:Req id="OS199">
 		<ns1:Class>2,4</ns1:Class>
@@ -384,7 +384,7 @@ after a synchronization count is provided.</ns1:Description>
 		<ns1:Component>code</ns1:Component>
 		<ns1:Verification>code</ns1:Verification>
 		<ns1:Description>The OS shall set the state of an explicitly synchronized  schedule table to
-“running and synchronous�? if the absolute value of the deviation between schedule table value the synchronization count is less than the configured
+“running and synchronous” if the absolute value of the deviation between schedule table value the synchronization count is less than the configured
 OsScheduleTblExplicitPrecision threshold.</ns1:Description>
 	</ns1:Req>
 	<ns1:Req id="OS419">
@@ -392,7 +392,7 @@ OsScheduleTblExplicitPrecision threshold.</ns1:Description>
 		<ns1:Component>code</ns1:Component>
 		<ns1:Verification>code</ns1:Verification>
 		<ns1:Description>The OS shall set the state of an explicitly synchronized schedule table to
-“running�? if the absolute value of the deviation between  schedule table value the synchronization count is greater  than or equal to the configured
+“running” if the absolute value of the deviation between  schedule table value the synchronization count is greater  than or equal to the configured
 OsScheduleTblExplicitPrecision threshold.</ns1:Description>
 	</ns1:Req>
 	<ns1:Req id="OS420">
@@ -465,7 +465,7 @@ Applications.</ns1:Description>
 		<ns1:Class>,3,4</ns1:Class>
 		<ns1:Component>code</ns1:Component>
 		<ns1:Verification>code</ns1:Verification>
-		<ns1:Description>Trusted OS-Applications may offer services (“trusted services�?) to other
+		<ns1:Description>Trusted OS-Applications may offer services (“trusted services”) to other
 (even non-trusted) OS-Applications.</ns1:Description>
 	</ns1:Req>
 	<ns1:Req id="OS016">
@@ -760,7 +760,7 @@ status code E_OS_ILLEGAL_ADDRESS.</ns1:Description>
 		<ns1:Component>code</ns1:Component>
 		<ns1:Verification>code</ns1:Verification>
 		<ns1:Description>If an OS-Application makes a service  call from the wrong context AND is
-currently not inside a Category 1 OsIsr the Operating System shall not perform the requested action (the service call shall have no effect), and return E_OS_CALLEVEL or the “invalid value�? of the service.</ns1:Description>
+currently not inside a Category 1 OsIsr the Operating System shall not perform the requested action (the service call shall have no effect), and return E_OS_CALLEVEL or the “invalid value” of the service.</ns1:Description>
 	</ns1:Req>
 	<ns1:Req id="OS052">
 		<ns1:Class>1,2,3,4</ns1:Class>
@@ -1189,7 +1189,7 @@ return the access rights of the OsIsr on the specified memory area.</ns1:Descrip
 		<ns1:Class>3,4</ns1:Class>
 		<ns1:Component>code</ns1:Component>
 		<ns1:Verification>code</ns1:Verification>
-		<ns1:Description>If an access right (e.g. “read�?) is not valid for the whole specified memory
+		<ns1:Description>If an access right (e.g. “read”) is not valid for the whole specified memory
 area   CheckISRMemoryAccess() shall yield no access regarding this right.</ns1:Description>
 	</ns1:Req>
 	<ns1:Req id="OS268">
@@ -1210,7 +1210,7 @@ shall return the access rights of the task on the specified memory area.</ns1:De
 		<ns1:Class>3,4</ns1:Class>
 		<ns1:Component>code</ns1:Component>
 		<ns1:Verification>code</ns1:Verification>
-		<ns1:Description>If an access right (e.g. “read�?) is not valid for the whole specified memory
+		<ns1:Description>If an access right (e.g. “read”) is not valid for the whole specified memory
 area   CheckTaskMemoryAccess() shall yield no access regarding this right.</ns1:Description>
 	</ns1:Req>
 	<ns1:Req id="OS270">
@@ -1261,7 +1261,7 @@ shall return the identifier of the OS-Application to which the object belongs.</
 		<ns1:Component>code</ns1:Component>
 		<ns1:Verification>code</ns1:Verification>
 		<ns1:Description>If the specified object ObjectType is invalid OR the argument of the type
-(the “…�?) is invalid , CheckObjectOwnership() shall return
+(the “…”) is invalid , CheckObjectOwnership() shall return
 INVALID_OSAPPLICATION.</ns1:Description>
 	</ns1:Req>
 	<ns1:Req id="OS319">
@@ -1428,8 +1428,8 @@ after the Final Expiry Point on &lt;ScheduleTableID_From&gt; is processed .</ns1
 		<ns1:Component>code</ns1:Component>
 		<ns1:Verification>code</ns1:Verification>
 		<ns1:Description>If the input parameters are valid AND the &lt;ScheduleTableID_From&gt;
-already has a “next�? schedule table then the &lt;ScheduleTableID_To&gt; shall replace
-the previous “next�? schedule table and the old “next�? schedule table state becomes
+already has a “next” schedule table then the &lt;ScheduleTableID_To&gt; shall replace
+the previous “next” schedule table and the old “next” schedule table state becomes
 SCHEDULETABLE_STOPPED.</ns1:Description>
 	</ns1:Req>
 	<ns1:Req id="OS363">
@@ -1444,7 +1444,7 @@ effect when the Operating System processes the first expiry point of
 		<ns1:Class>1,2,3,4</ns1:Class>
 		<ns1:Component>code</ns1:Component>
 		<ns1:Verification>code</ns1:Verification>
-		<ns1:Description>If the &lt;ScheduleTableID_From&gt; is stopped, the “next�? schedule table
+		<ns1:Description>If the &lt;ScheduleTableID_From&gt; is stopped, the “next” schedule table
 does not start and its state changes to SCHEDULETABLE_STOPPED.</ns1:Description>
 	</ns1:Req>
 	<ns1:Req id="OS387">

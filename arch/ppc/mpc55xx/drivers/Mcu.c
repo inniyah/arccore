@@ -130,6 +130,7 @@ static void Mcu_LossOfCLock( void  ) {
 
 #define CORE_PVR_E200Z1   0x81440000UL
 #define CORE_PVR_E200Z0   0x81710000UL
+#define CORE_PVR_E200Z3 	0x81120000UL
 #define CORE_PVR_E200Z6   0x81170000UL
 
 

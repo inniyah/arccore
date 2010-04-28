@@ -102,7 +102,6 @@ void EcuM_AL_DriverInitOne(const EcuM_ConfigType *ConfigPtr)
 	// Setup ICU
 	// TODO
 
-	// Setup PWM
 #if defined(USE_PWM)
 	// Setup PWM
 	Pwm_Init(ConfigPtr->PwmConfig);
@@ -156,7 +155,7 @@ void EcuM_AL_DriverInitTwo(const EcuM_ConfigType* ConfigPtr)
 #endif
 
 #if defined(USE_IOHWAB)
-	// Setup IO Hardware Abstraction
+	// Setup IO hardware abstraction layer
 	IoHwAb_Init();
 #endif
 }
@@ -164,8 +163,8 @@ void EcuM_AL_DriverInitTwo(const EcuM_ConfigType* ConfigPtr)
 void EcuM_AL_DriverInitThree(const EcuM_ConfigType ConfigPtr)
 {
 #if defined(USE_CANIF)
-	// Startup the CAN interface; due to the missing COM manager
-	CanIf_InitController(CANIF_CHANNEL_0, CANIF_CHANNEL_0_CONFIG_0);
-	CanIf_SetControllerMode(CANIF_CHANNEL_0, CANIF_CS_STARTED);
+	// Startup the CAN interafce; due to the missing COM manager
+//	CanIf_InitController(CANIF_Channel_1, CANIF_Channel_1_CONFIG_0);
+//	CanIf_SetControllerMode(CANIF_Channel_1, CANIF_CS_STARTED);
 #endif
 }

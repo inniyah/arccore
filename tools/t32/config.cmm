@@ -9,6 +9,7 @@
 GLOBAL &cfg_project_path_g
 GLOBAL &cfg_loadfile_g
 GLOBAL &cfg_cpu_g
+GLOBAL &cfg_cpu_family_g
 
 // Global macros
 LOCAL &data_file
@@ -43,6 +44,7 @@ load:
     READ #1 &cfg_project_path_g		
     READ #1 &cfg_loadfile_g	
     READ #1 &cfg_cpu_g	
+    READ #1 &cfg_cpu_family_g
     CLOSE #1
   ) 
   ELSE 
@@ -50,6 +52,7 @@ load:
     &cfg_project_path_g=""
     &cfg_loadfile_g=""
     &cfg_cpu_g=""
+    &cfg_cpu_family_g=""
   )
   RETURN
 
@@ -63,6 +66,7 @@ save:
   WRITE #1 "&cfg_project_path_g" 
   WRITE #1 "&cfg_loadfile_g"
   WRITE #1 "&cfg_cpu_g"
+  WRITE #1 "&cfg_cpu_family_g"
   CLOSE #1
   RETURN
 
@@ -73,6 +77,7 @@ debug:
   print "       project_path: &cfg_project_path_g"
   print "       load file:    &cfg_loadfile_g"
   print "       cpu:          &cfg_cpu_g"
+  print "       cpu_fam:      &cfg_cpu_family_g"
   RETURN
 
 
@@ -119,7 +124,7 @@ dialog_project:
         pos 1. 1. 14.
         text "CPU:"
         pos 1. 2. 10.
-CPU:   PULLDOWN "mpc5516,mpc5554,CortexM3"
+CPU:   PULLDOWN "mpc5516,mpc5554,mpc5633M,CortexM3,HC12DG128A"
         (
         )
         HEADER "Project config"
@@ -142,6 +147,7 @@ P_PATH: EDIT "&cfg_project_path_g" ""
 save_close:
   &cfg_cpu_g=dialog.string(CPU)
   &cfg_project_path_g=dialog.string(P_PATH)
+  sys.cpu &cfg_cpu_g
   do config save
 win_close:
   dialog.end

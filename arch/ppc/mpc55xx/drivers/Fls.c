@@ -59,7 +59,6 @@
 #include <assert.h>
 #include <string.h>
 #include "Det.h"
-#include "h7f_types.h"
 #if defined(USE_DEM)
 #include "Dem.h"
 #endif

@@ -44,6 +44,9 @@
 #if defined(USE_COM)
 #include "Com.h"
 #endif
+#if defined(USE_PDUR)
+#include "PduR.h"
+#endif
 #if defined(USE_DMA)
 #include "Dma.h"
 #endif
@@ -74,6 +77,9 @@ typedef struct
 #endif
 #if defined(USE_COM)
 	const Com_ConfigType* ComConfig;
+#endif
+#if defined(USE_PDUR)
+	const PduR_PBConfigType* PduRConfig;
 #endif
 #if defined(USE_PWM)
 	const Pwm_ConfigType* PwmConfig;
