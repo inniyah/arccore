@@ -115,7 +115,7 @@ void EcuM_Init( void ) {
 
 
 //	EcuM_SelectShutdownTarget(target,mode);
-	StartOS(0);
+	StartOS(OSDEFAULTAPPMODE);
 // Startup II
 	//EcuM_AL_DriverInitTwo();
 
