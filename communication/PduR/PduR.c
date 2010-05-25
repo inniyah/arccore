@@ -26,6 +26,9 @@
 
 
 #include "Det.h"
+#if defined(USE_DEM)
+#include "Dem.h"
+#endif
 #include "PduR.h"
 #include "Mcu.h"
 #include "debug.h"
@@ -145,8 +148,9 @@ void PduR_BufferQueue(PduRTxBuffer_type *Buffer, const uint8 * SduPtr) {
 
 	if (PduR_BufferIsFull(Buffer)) { // Buffer is full
 		PduR_BufferFlush(Buffer);
-		DET_REPORTERROR(PDUR_MODULE_ID, PDUR_INSTANCE_ID, 0x00, PDUR_E_PDU_INSTANCE_LOST);
-
+#if defined(USE_DEM)
+		Dem_ReportErrorStatus(PDUR_E_PDU_INSTANCE_LOST, DEM_EVENT_STATUS_FAILED);
+#endif
 
 	} else {
 		// Copy data to last place in buffer
@@ -219,4 +223,3 @@ void PduR_ChangeParameterRequest(PduR_ParameterValueType PduParameterValue, PduI
 	// TODO Implement!
 
 }
-

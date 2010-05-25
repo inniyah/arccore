@@ -24,8 +24,12 @@
 // the EcuM. Every Autocore application should use an own version of this
 // file to implement the setup and tear down of the system.
 
+
 #include "EcuM.h"
 #include "Det.h"
+#if defined(USE_DEM)
+#include "Dem.h"
+#endif
 #if defined(USE_MCU)
 #include "Mcu.h"
 #endif
@@ -43,6 +47,12 @@
 #endif
 #if defined(USE_COM)
 #include "Com.h"
+#endif
+#if defined(USE_CANTP)
+#include "CanTp.h"
+#endif
+#if defined(USE_DCM)
+#include "Dcm.h"
 #endif
 #if defined(USE_PWM)
 #include "Pwm.h"
@@ -73,6 +83,11 @@ void EcuM_AL_DriverInitOne(const EcuM_ConfigType *ConfigPtr)
 	// Wait for PLL to sync.
 	while (Mcu_GetPllStatus() != MCU_PLL_LOCKED)
 	  ;
+#endif
+
+#if defined(USE_DEM)
+	// Preinitialize DEM
+	Dem_PreInit();
 #endif
 
 #if defined(USE_PORT)
@@ -141,6 +156,11 @@ void EcuM_AL_DriverInitTwo(const EcuM_ConfigType* ConfigPtr)
 	CanIf_Init(ConfigPtr->CanIfConfig);
 #endif
 
+#if defined(USE_CANTP)
+	// Setup CAN TP
+	CanTp_Init();
+#endif
+
 	// Setup LIN
 	// TODO
 
@@ -154,6 +174,11 @@ void EcuM_AL_DriverInitTwo(const EcuM_ConfigType* ConfigPtr)
 	Com_Init(ConfigPtr->ComConfig);
 #endif
 
+#if defined(USE_DCM)
+	// Setup DCM
+	Dcm_Init();
+#endif
+
 #if defined(USE_IOHWAB)
 	// Setup IO hardware abstraction layer
 	IoHwAb_Init();
@@ -162,9 +187,20 @@ void EcuM_AL_DriverInitTwo(const EcuM_ConfigType* ConfigPtr)
 
 void EcuM_AL_DriverInitThree(const EcuM_ConfigType ConfigPtr)
 {
+	// Setup ComM
+
+#if defined(USE_DEM)
+	// Setup DEM
+	Dem_Init();
+#endif
+
+	// Setup FIM
+
 #if defined(USE_CANIF)
 	// Startup the CAN interafce; due to the missing COM manager
 //	CanIf_InitController(CANIF_Channel_1, CANIF_Channel_1_CONFIG_0);
 //	CanIf_SetControllerMode(CANIF_Channel_1, CANIF_CS_STARTED);
 #endif
+
+
 }

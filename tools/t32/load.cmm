@@ -9,7 +9,9 @@ if CPU()=="HC12DG128A"
   gosub &var
 )
 ELSE
-gosub &cmd
+  gosub &cmd
+
+
 
 enddo
 
@@ -32,23 +34,23 @@ load:
   LOCAL &file
   dialog.file "&cfg_project_path_g"/*.elf
   ENTRY &file
-  
-  IF OS.FILE(&file) 
+
+  IF OS.FILE(&file)
     &cfg_loadfile_g="&file"
-    
-  do config save   
+
+  do config save
   do flash open
-  data.load.elf &cfg_loadfile_g /CYGDRIVE /GNU 
+  data.load.elf &cfg_loadfile_g /CYGDRIVE /GNU
   do flash close
   print "&cfg_loadfile_g"
 
   enddo
 
-//-------------------------------------------------------------  
+//-------------------------------------------------------------
 reload:
   print "&cfg_loadfile_g"
   sys.up
-  r.reset  
+  r.reset
   do flash init
   do flash open
   data.load.elf &cfg_loadfile_g /GNU /CYGDRIVE
@@ -118,7 +120,8 @@ path:
 
 
 
-    
+
+
 
 
 

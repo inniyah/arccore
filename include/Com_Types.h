@@ -23,8 +23,10 @@
  */
 
 
+
 #ifndef COM_TYPES_H_
 #define COM_TYPES_H_
+
 
 #include "ComStack_Types.h"
 

@@ -27,9 +27,8 @@
 
 #if (PDUR_ZERO_COST_OPERATION == STD_OFF)
 
-void PduR_CanIfRxIndication (PduIdType CanRxPduId, const uint8 *CanSudPtr );
-void PduR_CanIfTxConfirmation(PduIdType CanTxPduId);
-
+	void PduR_CanIfRxIndication (PduIdType CanRxPduId, const uint8 *CanSudPtr );
+	void PduR_CanIfTxConfirmation(PduIdType CanTxPduId);
 
 #else // Zero cost operation active
 
@@ -37,15 +36,15 @@ void PduR_CanIfTxConfirmation(PduIdType CanTxPduId);
 
 		#include "Com_Com.h"
 
-#define PduR_CanIfRxIndication Com_RxIndication
-#define PduR_CanIfTxConfirmation Com_TxConfirmation
+		#define PduR_CanIfRxIndication Com_RxIndication
+		#define PduR_CanIfTxConfirmation Com_TxConfirmation
 
 	#else
 
 		#define PduR_CanIfRxIndication(... )
 		#define PduR_CanIfTxConfirmation(...)
 
-#endif
+	#endif
 
 #endif // Zero cost operation active
 

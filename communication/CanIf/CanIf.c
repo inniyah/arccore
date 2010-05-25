@@ -31,6 +31,10 @@
 #include "debug.h"
 #include "PduR.h"
 
+#if defined(USE_CANTP)
+#include "CanTp_Cbk.h"
+#endif
+
 #if 0
 // TODO: Include upper layer functions, See CANIF208 and CANIF233
 #include "PduR_CanIf.h"
@@ -86,17 +90,25 @@ typedef struct
 
 static CanIf_Arc_ChannelIdType CanIf_Arc_FindHrhChannel( Can_Arc_HRHType hrh )
 {
+  const CanIf_InitHohConfigType *hohConfig;
   const CanIf_HrhConfigType *hrhConfig;
 
-  hrhConfig = CanIf_ConfigPtr->InitConfig->CanIfHohConfigPtr->CanIfHrhConfig;
-
-  hrhConfig--;
+  // foreach(hoh){ foreach(hrh in hoh) {} }
+  hohConfig = CanIf_ConfigPtr->InitConfig->CanIfHohConfigPtr;
+  hohConfig--;
   do
   {
-    hrhConfig++;
-    if (hrhConfig->CanIfHrhIdSymRef == hrh)
-      return hrhConfig->CanIfCanControllerHrhIdRef;
-  } while(!hrhConfig->CanIf_Arc_EOL);
+    hohConfig++;
+
+    hrhConfig = hohConfig->CanIfHrhConfig;
+    hrhConfig--;
+    do
+    {
+      hrhConfig++;
+      if (hrhConfig->CanIfHrhIdSymRef == hrh)
+        return hrhConfig->CanIfCanControllerHrhIdRef;
+    } while(!hrhConfig->CanIf_Arc_EOL);
+  } while(!hohConfig->CanIf_Arc_EOL);
 
   DET_REPORTERROR(MODULE_ID_CANIF, 0, CANIF_RXINDICATION_ID, CANIF_E_PARAM_HRH);
 
@@ -643,7 +655,7 @@ void CanIf_TxConfirmation(PduIdType canTxPduId)
   VALIDATE_NO_RV(CanIf_Global.initRun, CANIF_TXCONFIRMATION_ID, CANIF_E_UNINIT)
   VALIDATE_NO_RV(canTxPduId < CanIf_ConfigPtr->InitConfig->CanIfNumberOfCanTXPduIds, CANIF_TXCONFIRMATION_ID, CANIF_E_PARAM_LPDU);
 
-  const CanIf_TxPduConfigType *entry =
+  const CanIf_TxPduConfigType* entry =
     &CanIf_ConfigPtr->InitConfig->CanIfTxPduConfigPtr[canTxPduId];
 
   /* Find the CAN id in the TxPduList */
@@ -752,17 +764,26 @@ void CanIf_RxIndication(uint8 Hrh, Can_IdType CanId, uint8 CanDlc,
             return;
         }
         break;
-         case CANIF_USER_TYPE_CAN_NM:
-         case CANIF_USER_TYPE_CAN_PDUR:
-        	 // Send Can frame to PDU router
-        	 PduR_CanIfRxIndication(entry->CanIfCanRxPduId,CanSduPtr);
-        	 return;
-        	 break;
 
-         case CANIF_USER_TYPE_CAN_TP:
-            continue; // Not supported yet
+        case CANIF_USER_TYPE_CAN_NM:
+        case CANIF_USER_TYPE_CAN_PDUR:
+            // Send Can frame to PDU router
+            PduR_CanIfRxIndication(entry->CanIfCanRxPduId,CanSduPtr);
             return;
-        break;
+            break;
+
+        case CANIF_USER_TYPE_CAN_TP:
+          // Send Can frame to CAN TP
+#if defined(USE_CANTP)
+            {
+                PduInfoType CanTpRxPdu;
+                CanTpRxPdu.SduLength = CanDlc;
+                CanTpRxPdu.SduDataPtr = (uint8 *)CanSduPtr;
+                CanTp_RxIndication(entry->CanIfCanRxPduId, &CanTpRxPdu); /** @req CANTP019 */
+            }
+            return;
+#endif
+            break;
       }
     }
 
@@ -783,7 +804,7 @@ void CanIf_CancelTxConfirmation(const Can_PduType *PduInfoPtr)
   const CanIf_TxPduConfigType *entry =
     CanIf_ConfigPtr->InitConfig->CanIfTxPduConfigPtr;
 
-      // Not supported
+  // Not supported
 
   // Did not find the PDU, something is wrong
   VALIDATE_NO_RV(FALSE, CANIF_TXCONFIRMATION_ID, CANIF_E_PARAM_LPDU);

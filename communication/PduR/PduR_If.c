@@ -26,6 +26,9 @@
 
 #include <string.h>
 #include "debug.h"
+#if defined(USE_DEM)
+#include "Dem.h"
+#endif
 
 /**
  * Helper function for the PduR_<LO>IfRxIndication functions. This helper performs the actions specified by PDUR255 and PDUR258.
@@ -100,10 +103,10 @@ void PduR_LoIfRxIndication(PduIdType PduId, const uint8* SduPtr) {
 
 
 			} else {
-				// TODO report PDUR_E_INSTANCE_LOST to DEM.
-				//Dem_ReportErrorStatus(PDUR_E_INSTANCE_LOST, 0);
-				DET_REPORTERROR(PDUR_MODULE_ID, PDUR_INSTANCE_ID, 0x00, PDUR_E_PDU_INSTANCE_LOST);
-				DEBUG(DEBUG_LOW,"\tTransmission failed. PDUR_E_INSTANCE_LOST\n");
+#if defined(USE_DEM)
+				Dem_ReportErrorStatus(PDUR_E_PDU_INSTANCE_LOST, DEM_EVENT_STATUS_FAILED);
+#endif
+				DEBUG(DEBUG_LOW,"\tTransmission failed. PDUR_E_PDU_INSTANCE_LOST\n");
 			}
 		}
 	}
