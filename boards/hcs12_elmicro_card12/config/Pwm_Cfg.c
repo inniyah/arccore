@@ -20,7 +20,39 @@
 
 
 
-#ifndef COMM_NM_H_
-#define COMM_NM_H_
+/*
+ * Pwm_Cfg.c
+ *
+ *      Author: jonte
+ */
 
-#endif /*COMM_NM_H_*/
+#include "Pwm.h"
+#include "Pwm_Cfg.h"
+
+const Pwm_ConfigType PwmConfig =
+{
+		.channels = {
+			{
+				.channel = PWM_CHANNEL_1,
+				DUTY_AND_PERIOD(0x6000,100),
+				.centerAlign = 0,
+				.polarity = POLARITY_NORMAL,
+				.scaledClockEnable = 0,
+				.idleState = PWM_LOW,
+				.class = PWM_VARIABLE_PERIOD,
+			},
+			{
+				.channel = PWM_CHANNEL_2,
+				DUTY_AND_PERIOD(0x1000,100),
+				.centerAlign = 0,
+				.polarity = POLARITY_NORMAL,
+				.scaledClockEnable = 1,
+				.idleState = PWM_LOW,
+				.class = PWM_VARIABLE_PERIOD,
+			},
+		},
+		.busPrescalerA = PRESCALER_128,
+		.busPrescalerB = PRESCALER_8,
+		.prescalerA = 1,
+		.prescalerB = 1,
+};

@@ -20,12 +20,37 @@
 
 
 
-#ifndef COMM_BUSSM_H_
-#define COMM_BUSSM_H_
+/*
+ * ComGlobals.h
+ *
+ *  Created on: 2009-jan-11
+ *      Author: Mattias
+ */
 
-#include "ComStack_Types.h"
-#include "ComM_Types.h"
+#ifndef COMGLOBALS_H_
+#define COMGLOBALS_H_
 
-void ComM_BusSM_ModeIndication(NetworkHandleType Channel,ComM_ModeType ComMode);
 
-#endif /*COMM_BUSSM_H_*/
+// PDU definitions
+enum {
+  // Used for PCAN.
+  PCAN_RX_FRAME_1 = 0,
+  PCAN_RX_FRAME_2 = 2,
+  PCAN_TX_FRAME_1 = 3,
+  PCAN_TX_FRAME_2 = 4,
+
+  // Used for hardware test.
+  PDU_MSG_HARDWARE_TEST_ENGINE_STATUS = 0,
+  PDU_MSG_HARDWARE_TEST_ENGINE_CONTROL = 1,
+  PDU_MSG_HARDWARE_TEST_ROUTED_MSG = 2,
+
+  // Used for testing CanIf
+  PDU_MSG_RX234 = 8,
+  PDU_MSG_RX123 = 10,
+  PDU_MSG_TX789 = 9,
+  PDU_MSG_TX987 = 11
+
+};
+
+
+#endif /* COMGLOBALS_H_ */

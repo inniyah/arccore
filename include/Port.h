@@ -31,14 +31,15 @@
 #define PORT_AR_MINOR_VERSION     0 
 #define PORT_AR_PATCH_VERSION     2 
 
-#include "Port_Cfg.h"
+#include "Port_Cfg.h" /** @req PORT130 */
 
-#if PORT_VERSION_INFO_API == STD_ON
+#if (PORT_VERSION_INFO_API == STD_ON)
 void Port_GetVersionInfo( Std_VersionInfoType *versionInfo );
 #endif 
 
 /** @name Error Codes */
-//@{
+/** @req PORT051 */
+/** @req PORT116 */
 #define PORT_E_PARAM_PIN					       0x0a
 #define PORT_E_DIRECTION_UNCHANGEABLE		 0x0b
 #define PORT_E_PARAM_CONFIG					     0x0c
@@ -56,8 +57,8 @@ void Port_GetVersionInfo( Std_VersionInfoType *versionInfo );
 #define PORT_SET_PIN_MODE_ID 			       0x04
 //@}
 
-/**
- * PORT046: The type Port_PinDirectionType is a type for defining the direction of a Port Pin. 
+/** @req PORT046
+ * The type Port_PinDirectionType is a type for defining the direction of a Port Pin.
  * PORT_PIN_IN Sets port pin as input. 
  * PORT_PIN_OUT  Sets port pin as output. 
  */
@@ -67,17 +68,22 @@ typedef enum
   PORT_PIN_OUT,
 } Port_PinDirectionType;
 
+#if defined(CFG_HC1X)
+/** @req PORT124 */
+typedef uint8 Port_PinModeType;
+
+#else	// CFG_PPC, CFG_STM32_STAMP and others
 typedef uint32 Port_PinModeType;
-typedef enum
-{
-  PORT_UNINITIALIZED = 0,
-  PORT_INITIALIZED,
-} Port_StateType;
+#endif
 
 void Port_Init( const Port_ConfigType *configType );
+#if (PORT_SET_PIN_DIRECTION_API == STD_ON)
 void Port_SetPinDirection( Port_PinType pin, Port_PinDirectionType direction );
+#endif
 void Port_RefreshPortDirection( void );
+#if (PORT_SET_PIN_MODE_API == STD_ON)
 void Port_SetPinMode( Port_PinType Pin, Port_PinModeType Mode );
+#endif
 
 #endif /*PORT_H_*/
 /** @} */
