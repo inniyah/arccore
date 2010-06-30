@@ -132,6 +132,9 @@ typedef enum
 } EcuM_BootTargetType;
 
 
+#define ECUM_MODULE_ID			MODULE_ID_ECUM
+#define ECUM_VENDOR_ID			1
+
 #define ECUM_SW_MAJOR_VERSION    	1
 #define ECUM_SW_MINOR_VERSION   	0
 #define ECUM_SW_PATCH_VERSION    	0
@@ -143,7 +146,7 @@ typedef enum
 #include "EcuM_Cfg.h"
 
 #if ( ECUM_VERSION_INFO_API == STD_ON)
-void EcuM_GetVersionInfo( Std_VersionInfoType *versionInfo );
+#define EcuM_GetVersionInfo(_vi) STD_GET_VERSION_INFO(_vi,ECUM)
 #endif
 
 void EcuM_Init( void );

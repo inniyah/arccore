@@ -67,7 +67,4 @@ inc-y += $(ROOTDIR)/arch/$(ARCH)
 inc-y += $(ROOTDIR)/include/$(ARCH_FAM)
 
 
-build-lib-y = $(ROOTDIR)/libs/libkernel_$(ARCH_MCU).a
  
-
-
