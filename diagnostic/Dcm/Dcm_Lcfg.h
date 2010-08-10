@@ -16,6 +16,12 @@
 #ifndef DCM_LCFG_H_
 #define DCM_LCFG_H_
 
+/*
+ *  General requirements
+ */
+/** @req DCM075 */ /** @req DCM076 */
+
+
 #include "ComStack_Types.h"
 #include "Dcm_Types.h"
 
@@ -95,7 +101,7 @@ typedef struct {
 	uint16 DspSessionP2ServerMax; // (1)
 	uint16 DspSessionP2StarServerMax; // (1)
 	boolean Arc_EOL;
-} Dcm_DspSessionRowType;
+} Dcm_DspSessionRowType; /** @req DCM072 */
 
 // 10.2.42
 typedef struct {
@@ -110,7 +116,7 @@ typedef struct {
 	Dcm_CallbackGetSeedFncType GetSeed;
 	Dcm_CallbackCompareKeyFncType CompareKey;
 	boolean Arc_EOL;
-} Dcm_DspSecurityRowType;
+} Dcm_DspSecurityRowType; /** @req DCM073 */
 
 // 10.2.23
 typedef struct {
@@ -121,25 +127,25 @@ typedef struct {
 
 // 10.2.26
 typedef struct {
-	const Dcm_DspSessionRowType **DspDidControlSessionRef; // (1..*)
-	const Dcm_DspSecurityRowType **DspDidControlSecurityLevelRef; // (1..*)
-	const Dcm_DspDidControlRecordSizesType *DspDidFreezeCurrentState; // (0..1)
-	const Dcm_DspDidControlRecordSizesType *DspDidResetToDefault; // (0..1)
-	const Dcm_DspDidControlRecordSizesType *DspDidReturnControlToEcu; // (0..1)
-	const Dcm_DspDidControlRecordSizesType *DspDidShortTermAdjustment; // (0..1)
-} Dcm_DspDidControlType;
+	const Dcm_DspSessionRowType				**DspDidControlSessionRef;			// (1..*)	/** @req DCM621 */
+	const Dcm_DspSecurityRowType			**DspDidControlSecurityLevelRef;	// (1..*)	/** @req DCM620 */
+	const Dcm_DspDidControlRecordSizesType	*DspDidFreezeCurrentState;			// (0..1)	/** @req DCM624 */
+	const Dcm_DspDidControlRecordSizesType	*DspDidResetToDefault;				// (0..1)	/** @req DCM623 */
+	const Dcm_DspDidControlRecordSizesType	*DspDidReturnControlToEcu;			// (0..1)	/** @req DCM622 */
+	const Dcm_DspDidControlRecordSizesType	*DspDidShortTermAdjustment;			// (0..1)	/** @req DCM625 */
+} Dcm_DspDidControlType; /** @req DCM619 */
 
 // 10.2.27
 typedef struct {
-	const Dcm_DspSessionRowType **DspDidReadSessionRef; // (1..*)
-	const Dcm_DspSecurityRowType **DspDidReadSecurityLevelRef; // (1..*)
-} Dcm_DspDidReadType;
+	const Dcm_DspSessionRowType		**DspDidReadSessionRef;			// (1..*)	/** @req DCM615 */
+	const Dcm_DspSecurityRowType	**DspDidReadSecurityLevelRef;	// (1..*)	/** @req DCM614 */
+} Dcm_DspDidReadType; /** @req DCM613 */
 
 // 10.2.28
 typedef struct {
-	const Dcm_DspSessionRowType **DspDidWriteSessionRef; // (1..*)
-	const Dcm_DspSecurityRowType **DspDidWriteSecurityLevelRef; // (1..*)
-} Dcm_DspDidWriteType;
+	const Dcm_DspSessionRowType		**DspDidWriteSessionRef;		// (1..*)	/** @req DCM618 */
+	const Dcm_DspSecurityRowType	**DspDidWriteSecurityLevelRef;	// (1..*)	/** @req DCM617 */
+} Dcm_DspDidWriteType; /** @req DCM616 */
 
 // 10.2.25
 typedef struct {
@@ -151,92 +157,91 @@ typedef struct {
 
 // 10.2.24
 typedef struct {
-	boolean DspDidDynamicllyDefined; // (1)
-	boolean DspDidFixedLength; // (1)
-	uint8 DspDidScalingInfoSize; // (0..1)
+	boolean					DspDidDynamicllyDefined;	// (1)		/** @req DCM612 */
+	boolean					DspDidFixedLength;			// (1)		/** @req DCM608 */
+	uint8					DspDidScalingInfoSize;		// (0..1)	/** @req DCM611 */
 	// Containers
 	Dcm_DspDidAccessType DspDidAccess; // (1)
-} Dcm_DspDidInfoType;
+} Dcm_DspDidInfoType; /** @req DCM607 */
 
 // 10.2.22
 typedef struct _Dcm_DspDidType {
 	boolean										DspDidUsePort;					// (1)
-	uint16										DspDidIdentifier;				// (1)
-	const Dcm_DspDidInfoType					*DspDidInfoRef;					// (1)
-	const struct _Dcm_DspDidType				**DspDidRef;					// (0..*)
-	uint16										DspDidSize;						// (1)
-	Dcm_CallbackReadDataLengthFncType			DspDidReadDataLengthFnc;		// (0..1)
-	Dcm_CallbackConditionCheckReadFncType		DspDidConditionCheckReadFnc;	// (0..1)
-	Dcm_CallbackReadDataFncType					DspDidReadDataFnc;				// (0..1)
-	Dcm_CallbackConditionCheckWriteFncType		DspDidConditionCheckWriteFnc;	// (0..1)
-	Dcm_CallbackWriteDataFncType				DspDidWriteDataFnc;				// (0..1)
-	Dcm_CallbackGetScalingInformationFncType	DspDidGetScalingInfoFnc;		// (0..1)
-	Dcm_CallbackFreezeCurrentStateFncType		DspDidFreezeCurrentStateFnc;	// (0..1)
-	Dcm_CallbackResetToDefaultFncType			DspDidResetToDeaultFnc;			// (0..1)
-	Dcm_CallbackReturnControlToECUFncType		DspDidReturnControlToEcuFnc;	// (0..1)
-	Dcm_CallbackShortTermAdjustmentFncType		DspDidShortTermAdjustmentFnc;	// (0..1)
+	uint16										DspDidIdentifier;				// (1)		/** @req DCM602 */
+	const Dcm_DspDidInfoType					*DspDidInfoRef;					// (1)		/** @req DCM604 */
+	const struct _Dcm_DspDidType				**DspDidRef;					// (0..*)	/** @req DCM606 */
+	uint16										DspDidSize;						// (1)		/** @req DCM605 */
+	Dcm_CallbackReadDataLengthFncType			DspDidReadDataLengthFnc;		// (0..1)	/** @req DCM671 */
+	Dcm_CallbackConditionCheckReadFncType		DspDidConditionCheckReadFnc;	// (0..1)	/** @req DCM677 */
+	Dcm_CallbackReadDataFncType					DspDidReadDataFnc;				// (0..1)	/** @req DCM669 */
+	Dcm_CallbackConditionCheckWriteFncType		DspDidConditionCheckWriteFnc;	// (0..1)	/** @req DCM678 */
+	Dcm_CallbackWriteDataFncType				DspDidWriteDataFnc;				// (0..1)	/** @req DCM670 */
+	Dcm_CallbackGetScalingInformationFncType	DspDidGetScalingInfoFnc;		// (0..1)	/** @req DCM676 */
+	Dcm_CallbackFreezeCurrentStateFncType		DspDidFreezeCurrentStateFnc;	// (0..1)	/** @req DCM674 */
+	Dcm_CallbackResetToDefaultFncType			DspDidResetToDeaultFnc;			// (0..1)	/** @req DCM673 */
+	Dcm_CallbackReturnControlToECUFncType		DspDidReturnControlToEcuFnc;	// (0..1)	/** @req DCM672 */
+	Dcm_CallbackShortTermAdjustmentFncType		DspDidShortTermAdjustmentFnc;	// (0..1)	/** @req DCM675 */
 	// Containers
 	const Dcm_DspDidControlRecordSizesType		*DspDidControlRecordSize;		// (0..*)
 	boolean										Arc_EOL;
-} Dcm_DspDidType;
+} Dcm_DspDidType; /** @req DCM601 */
 
 // 10.2.30
 typedef struct {
 	const Dcm_DspSessionRowType **DspEcuResetSessionRef; // (1..*)
 	const Dcm_DspSecurityRowType **DspEcuResetSecurityLevelRef; // (1..*)
-
-} Dcm_DspEcuResetType;
+} Dcm_DspEcuResetType; /** @req DCM657 */
 
 // 10.2.31
 typedef struct {
 	boolean DspPidUsePort; // (1)
-	uint8 DspPidIdentifier; // (1)
-	uint8 DspPidSize; // (1)
-	Dcm_CallbackGetPIDValueFncType DspGetPidValFnc; // (1)
-} Dcm_DspPidType;
+	uint8							DspPidIdentifier;	// (1)	/** @req DCM627 */
+	uint8							DspPidSize; 		// (1)	/** @req DCM628 */
+	Dcm_CallbackGetPIDValueFncType	DspGetPidValFnc;	// (1)	/** @req DCM629 */
+} Dcm_DspPidType; /** @req DCM626 */
 
 // 10.2.33
 typedef struct {
 	boolean DspDTCInfoSubFuncSupp; // (1)
 	uint8 DspDTCInfoSubFuncLevel; // (1)
 	const Dcm_DspSecurityRowType **DspDTCInfoSecLevelRef; // (1..*)
-} Dcm_DspReadDTCRowType;
+} Dcm_DspReadDTCRowType; /** @req DCM073 */
 
 // 10.2.32
 typedef struct {
 	// Containers
 	Dcm_DspReadDTCRowType *DspReadDTCRow; // (0..*)
-} Dcm_DspReadDTCType;
+} Dcm_DspReadDTCType; /** @req DCM074 */
 
 // 10.2.34
 typedef struct {
 	uint8 DspRequestControl; // (1)
 	uint8 DspRequestControlOutBufferSize; // (1)
-	uint8 DspRequestControlTestId; // (1)
-} Dcm_DspRequestControlType;
+	uint8 DspRequestControlTestId;			// (1)	/** @req DCM656 */
+} Dcm_DspRequestControlType; /** @req DCM637 */
 
 // 10.2.37
 typedef struct {
-	const Dcm_DspSessionRowType *DspRoutineSessionRef; // (1..*)
-	const Dcm_DspSecurityRowType *DspRoutineSecurityLevelRef; // (1..*)
-} Dcm_DspRoutineAuthorizationType;
+	const Dcm_DspSessionRowType		*DspRoutineSessionRef;			// (1..*)	/** @req DCM649 */
+	const Dcm_DspSecurityRowType	*DspRoutineSecurityLevelRef;	// (1..*)	/** @req DCM648 */
+} Dcm_DspRoutineAuthorizationType; /** @req DCM644 */
 
 // 10.2.38
 typedef struct {
-	uint8 DspReqResRtnCtrlOptRecSize; // (1)
-} Dcm_DspRoutineRequestResType;
+	uint8 DspReqResRtnCtrlOptRecSize; // (1)	/** @req DCM652 */
+} Dcm_DspRoutineRequestResType; /** @req DCM646 */
 
 // 10.2.39
 typedef struct {
-	uint8 DspStopRoutineCtrlOptRecSize; // (1)
-	uint8 DspStopRoutineStsOptRecSize; // (1)
-} Dcm_DspRoutineStopType;
+	uint8 DspStopRoutineCtrlOptRecSize;	// (1)	/** @req DCM650 */
+	uint8 DspStopRoutineStsOptRecSize;	// (1)	/** @req DCM651 */
+} Dcm_DspRoutineStopType; /** @req DCM645 */
 
 // 10.2.40
 typedef struct {
-	uint8 DspStartRoutineCtrlOptRecSize; // (1)
-	uint8 DspStartRoutineStsOptRecSize; // (1)
-} Dcm_DspStartRoutineType;
+	uint8 DspStartRoutineCtrlOptRecSize;	// (1)	/** @req DCM654 */
+	uint8 DspStartRoutineStsOptRecSize;		// (1)	/** @req DCM655 */
+} Dcm_DspStartRoutineType; /** @req DCM647 */
 
 // 10.2.36
 typedef struct {
@@ -245,56 +250,56 @@ typedef struct {
 	const Dcm_DspRoutineRequestResType *DspRoutineRequestRes; // (0..1)
 	const Dcm_DspRoutineStopType *DspRoutineStop; // (0..1)
 	const Dcm_DspStartRoutineType *DspStartRoutine; // (1)
-} Dcm_DspRoutineInfoType;
+} Dcm_DspRoutineInfoType; /** @req DCM643 */
 
 // 10.2.35
 typedef struct {
 	boolean DspRoutineUsePort; // (1)
-	uint16 DspRoutineIdentifier; // (1)
-	const Dcm_DspRoutineInfoType *DspRoutineInfoRef; // (1)
-	Dcm_CallbackStartFncType DspStartRoutineFnc; // (0..1)
-	Dcm_CallbackStopFncType DspStopRoutineFnc; // (0..1)
-	Dcm_CallbackRequestResultFncType DspRequestResultRoutineFnc; // (0..1)
-} Dcm_DspRoutineType;
+	uint16								DspRoutineIdentifier;		// (1)		/** @req DCM641 */
+	const Dcm_DspRoutineInfoType		*DspRoutineInfoRef;			// (1)		/** @req DCM642 */
+	Dcm_CallbackStartFncType			DspStartRoutineFnc;			// (0..1)	/** @req DCM664 */
+	Dcm_CallbackStopFncType				DspStopRoutineFnc;			// (0..1)	/** @req DCM665 */
+	Dcm_CallbackRequestResultFncType	DspRequestResultRoutineFnc;	// (0..1)	/** @req DCM665 */
+} Dcm_DspRoutineType; /** @req DCM640 */
 
 // 10.2.41
 typedef struct {
 	// Containers
 	const Dcm_DspSecurityRowType *DspSecurityRow; // (0..31)
-} Dcm_DspSecurityType;
+} Dcm_DspSecurityType; /** @req DCM073 */
 
 // 10.2.43
 typedef struct {
 	// Containers
 	const Dcm_DspSessionRowType *DspSessionRow; // (0..31)
-} Dcm_DspSessionType;
+} Dcm_DspSessionType; /** @req DCM072 */
 
 // 10.2.47
 typedef struct {
-	uint8 DspTestResultTestId; // (1)
-	uint8 DspTestResultUaSid; // (1)
-} Dcm_DspTestResultTidType;
+	uint8 DspTestResultTestId;	// (1)	/** @req DCM635 */
+	uint8 DspTestResultUaSid;	// (1)	/** @req DCM686 */
+} Dcm_DspTestResultTidType; /** @req DCM634 */
 
 // 10.2.46
 typedef struct {
-	uint8 DspTestResultObdmid; // (1)
-	const Dcm_DspTestResultTidType **DspTestResultObdmidTidRef; // (1..*)
-} Dcm_DspTestResultObdmidTidType;
+	uint8							DspTestResultObdmid;			// (1)		/** @req DCM684 */
+	const Dcm_DspTestResultTidType	**DspTestResultObdmidTidRef;	// (1..*)	/** @req DCM685 */
+} Dcm_DspTestResultObdmidTidType; /** @req DCM683 */
 
 // 10.2.45
 typedef struct {
 	// Containers
 	const Dcm_DspTestResultObdmidTidType *DspTestResultObdmidTid; // (0..*)
 	const Dcm_DspTestResultTidType *DspTestResultTid; // (0..*)
-} Dcm_DspTestResultByObdmidType;
+} Dcm_DspTestResultByObdmidType; /** @req DCM682 */
 
 // 10.2.48
 typedef struct {
 	boolean DspVehInfoUsePort; // (1)
-	uint8 DspVehInfoType; // (1)
-	uint8 DspVehInfoSize; // (1)
-	Dcm_CallbackGetInfoTypeValueFncType DspGetVehInfoTypeFnc; // (1)
-} Dcm_DspVehInfoType;
+	uint8								DspVehInfoType;			// (1)	/** @req DCM631 */
+	uint8								DspVehInfoSize;			// (1)	/** @req DCM632 */
+	Dcm_CallbackGetInfoTypeValueFncType	DspGetVehInfoTypeFnc;	// (1)	/** @req DCM633 */
+} Dcm_DspVehInfoType; /** @req DCM630 */
 
 // 10.2.21
 typedef struct {
@@ -333,7 +338,7 @@ typedef struct {
 	// Containers
 	const Dcm_DsdServiceType *DsdService; // (1..*)
 	boolean Arc_EOL;
-} Dcm_DsdServiceTableType;
+} Dcm_DsdServiceTableType; /** @req DCM071 */
 
 // 10.2.2 DcmDsd
 typedef struct {
@@ -365,7 +370,6 @@ typedef enum
 
 typedef struct {
 	Dcm_DslBufferStatusType status; // Flag for buffer in use.
-
 } Dcm_DslBufferRuntimeType;
 
 // 10.2.6
@@ -374,14 +378,14 @@ typedef struct {
 	uint16 DslBufferSize; // (1)
 	PduInfoType pduInfo;
 	Dcm_DslBufferRuntimeType *externalBufferRuntimeData;
-} Dcm_DslBufferType;
+} Dcm_DslBufferType; /** @req DCM032 */
 
 // 10.2.7
 typedef struct {
 	Dcm_CallbackStartProtocolFncType StartProtocol;
 	Dcm_CallbackStopProtocolFncType StopProtocol;
 	boolean Arc_EOL;
-} Dcm_DslCallbackDCMRequestServiceType;
+} Dcm_DslCallbackDCMRequestServiceType; /** @req DCM679 */
 
 // 10.2.8
 typedef struct {
@@ -402,7 +406,7 @@ typedef struct {
 // 10.2.17
 typedef struct {
 	const Dcm_DslProtocolTimingRowType *DslProtocolTimingRow; // (0..*)
-} Dcm_DslProtocolTimingType;
+} Dcm_DslProtocolTimingType; /** @req DCM031 */
 
 // 10.2.15
 typedef struct {
@@ -557,7 +561,7 @@ const Dcm_DslProtocolRowType *DslProtocolRowList; // (1..*)
 typedef struct {
 Dcm_CallbackIndicationFncType Indication;
 boolean Arc_EOL;
-} Dcm_DslServiceRequestIndicationType;
+} Dcm_DslServiceRequestIndicationType; /** @req DCM681 */
 
 // 10.2.20
 typedef struct {
@@ -565,7 +569,7 @@ Dcm_CallbackGetSesChgPermissionFncType GetSesChgPermission;
 Dcm_CallbackChangeIndicationFncType ChangeIndication;
 Dcm_CallbackConfirmationRespPendFncType ConfirmationRespPend;
 boolean Arc_EOL;
-} Dcm_DslSessionControlType;
+} Dcm_DslSessionControlType; /** @req DCM680 */
 
 // 10.2.5
 typedef struct {
