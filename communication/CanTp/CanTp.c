@@ -20,6 +20,14 @@
  * TBD.
  */
 
+/*
+ *  General requirements
+ */
+
+/** @req CANTP001 */
+/** @req CANTP019 */
+/** @req CANTP020 */
+/** @req CANTP156.Partially */
 /** @req CANTP150 */
 /** @req CANTP151 */
 /** @req CANTP152 */
@@ -28,14 +36,22 @@
 /** @req CANTP158 */
 /** @req CANTP003 */
 /** @req CANTP216 */
+/** @req CANTP217 */
 
-#include "CanTp.h" /** @req CANTP156 */ /** @req CANTP219 */
-#include "CanTp_Cbk.h" /** @req CANTP156 *//** @req CANTP233 */
+/*
+ * Environmental requirements
+ */
+/** @req CANTP164 */
+/** @req CANTP199 */
+
+
+#include "CanTp.h" /** @req CANTP219 */
+#include "CanTp_Cbk.h" /** @req CANTP233 */
 #include "Det.h"
 #include "CanIf.h"
-#include "SchM_CanTp.h" /** @req CANTP156 */
+#include "SchM_CanTp.h"
 #include "PduR_CanTp.h"
-//#include "MemMap.h" /** @req CANTP156 */
+//#include "MemMap.h"
 #include <string.h>
 //#define USE_DEBUG_PRINTF
 #include "debug.h"
@@ -56,13 +72,11 @@
           Det_ReportError(MODULE_ID_CANTP, 0, _api, _err); \
           return; \
         }
-#undef DET_REPORTERROR
 #define DET_REPORTERROR(_x,_y,_z,_q) Det_ReportError(_x, _y, _z, _q)
 
 #else
 #define VALIDATE(_exp,_api,_err )
 #define VALIDATE_NO_RV(_exp,_api,_err )
-#undef DET_REPORTERROR
 #define DET_REPORTERROR(_x,_y,_z,_q)
 #endif
 
@@ -506,7 +520,7 @@ static INLINE void sendFlowControlFrame(const CanTp_RxNSduType *rxConfig, CanTp_
 	PduInfoType pduInfo;
 	uint8 sduData[8]; // Note that buffer in declared on the stack.
 	uint16 spaceFreePduRBuffer = 0;
-	uint16 computedBs = 0; // req:CanTp064 and example.
+	uint16 computedBs = 0;
 
 	DEBUG( DEBUG_MEDIUM, "sendFlowControlFrame called!\n");
 	pduInfo.SduDataPtr = &sduData[0];
@@ -945,7 +959,7 @@ static INLINE ISO15765FrameType calcRequiredProtocolFrameType(
 				ret = FIRST_FRAME;
 			} else {
 				DET_REPORTERROR( MODULE_ID_CANTP, 0, SERVICE_ID_CANTP_TRANSMIT, CANTP_E_INVALID_TATYPE );
-		}
+			}
 		}
 	} else {	// CANTP_STANDARD
 		if (txRuntime->transferTotal <= MAX_PAYLOAD_CF_STD_ADDR) {
@@ -957,7 +971,7 @@ static INLINE ISO15765FrameType calcRequiredProtocolFrameType(
 				DET_REPORTERROR( MODULE_ID_CANTP, 0, SERVICE_ID_CANTP_TRANSMIT, CANTP_E_INVALID_TATYPE );
 			}
 		}
-		}
+	}
 
 	return ret;
 }
@@ -1047,8 +1061,8 @@ static INLINE BufReq_ReturnType canTpTransmitHelper(const CanTp_TxNSduType *txCo
 #endif
 				} else {
 					PduR_CanTpTxConfirmation(txConfig->PduR_PduId, NTFRSLT_E_NOT_OK); /** @req CANTP204 */
-				txRuntime->iso15765.state = IDLE;
-				txRuntime->mode = CANTP_TX_WAIT;
+					txRuntime->iso15765.state = IDLE;
+					txRuntime->mode = CANTP_TX_WAIT;
 				}
 				break;
 			case FIRST_FRAME: {
@@ -1141,7 +1155,7 @@ Std_ReturnType CanTp_Transmit(PduIdType CanTpTxSduId,
 
 #if FRTP_CANCEL_TRANSMIT_REQUEST
 Std_ReturnType FrTp_CancelTransmitRequest(PduIdType FrTpTxPduId,
-		FrTp_CancelReasonType FrTpCancelReason) /** @req CANTP246 */
+		FrTp_CancelReasonType FrTpCancelReason)
 {
 	return E_NOT_OK;
 }
@@ -1150,7 +1164,7 @@ Std_ReturnType FrTp_CancelTransmitRequest(PduIdType FrTpTxPduId,
 // - - - - - - - - - - - - - -
 
 
-void CanTp_Init() /** @req CANTP208 */
+void CanTp_Init()
 {
 	CanTp_ChannelPrivateType *runtimeData;
 	const CanTp_TxNSduType *txConfigParams;
@@ -1182,7 +1196,7 @@ void CanTp_Init() /** @req CANTP208 */
 // - - - - - - - - - - - - - -
 
 void CanTp_RxIndication(PduIdType CanTpRxPduId, /** @req CANTP078 */ /** @req CANTP035 */
-		const PduInfoType *CanTpRxPduPtr) /** @req CANTP214 */
+		const PduInfoType *CanTpRxPduPtr)
 {
 	CanTpFifoQueueItem item;
 	VALIDATE_NO_RV( CanTpRunTimeData.internalState == CANTP_ON,
@@ -1201,7 +1215,7 @@ void CanTp_RxIndication(PduIdType CanTpRxPduId, /** @req CANTP078 */ /** @req CA
 // - - - - - - - - - - - - - -
 
 void CanTp_RxIndication_Main(PduIdType CanTpRxPduId,
-		const PduInfoType *CanTpRxPduPtr) /** @req CANTP214 */
+		const PduInfoType *CanTpRxPduPtr)
 {
 	const CanTp_RxNSduType *rxConfigParams; // Params reside in ROM.
 	const CanTp_TxNSduType *txConfigParams;
@@ -1277,7 +1291,7 @@ void CanTp_RxIndication_Main(PduIdType CanTpRxPduId,
 
 // - - - - - - - - - - - - - -
 
-void CanTp_TxConfirmation(PduIdType PduId) /** @req CANTP215 */ /** @req CANTP076 *//** @req CANTP215 */
+void CanTp_TxConfirmation(PduIdType PduId) /** @req CANTP076 */
 {
 	const CanTp_RxNSduType *rxConfigParams = NULL;
 	const CanTp_TxNSduType *txConfigParams = NULL;
@@ -1304,7 +1318,7 @@ void CanTp_TxConfirmation(PduIdType PduId) /** @req CANTP215 */ /** @req CANTP07
 
 // - - - - - - - - - - - - - -
 
-void CanTp_Shutdown() /** @req CANTP202 *//** @req CANTP200 *//** @req CANTP211 *//** @req CANTP010 */
+void CanTp_Shutdown() /** @req CANTP202 *//** @req CANTP200 *//** @req CANTP010 */
 {
 	VALIDATE_NO_RV( CanTpRunTimeData.internalState == CANTP_ON,
 			SERVICE_ID_CANTP_SHUTDOWN, CANTP_E_UNINIT ); /** @req CANTP031 */
@@ -1332,7 +1346,7 @@ static inline boolean checkNasNarTimeout(CanTp_ChannelPrivateType *runtimeData) 
 // - - - - - - - - - - - - - -
 
 
-void CanTp_MainFunction() /** @req CANTP213 */
+void CanTp_MainFunction()
 {
 	BufReq_ReturnType ret;
 	CanTpFifoQueueItem item;

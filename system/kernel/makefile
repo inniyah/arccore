@@ -26,7 +26,7 @@ obj-y += sys_tick.o
 #obj-y += stack.o
 obj-y += isr.o
 obj-y += os_arctest.o
-#obj-y += application.o
+obj-y += application.o
 
 
 # These are VERY cpu dependent.. remove
@@ -66,6 +66,6 @@ inc-y += $(ROOTDIR)/arch/$(ARCH_FAM)/$(ARCH)/drivers
 inc-y += $(ROOTDIR)/arch/$(ARCH_FAM)/$(ARCH)/config
 inc-y += $(ROOTDIR)/arch/$(ARCH)
 inc-y += $(ROOTDIR)/include/$(ARCH_FAM)
-
-
  
+
+

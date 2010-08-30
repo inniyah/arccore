@@ -90,7 +90,7 @@ const CanIf_HrhConfigType CanIfHrhConfigData_Hoh_1[] =
 };
 
 
-const CanIf_InitHohConfigType CanIfHohConfigData[] = {
+const CanIf_InitHohConfigType CanIfHohConfigData[] = { 
 		
 	{
 		.CanConfigSet = &CanConfigSetData,

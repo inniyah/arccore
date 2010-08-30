@@ -29,7 +29,7 @@ typedef enum {
 	COMM_NO_COMMUNICATION = 0,
 	COMM_SILENT_COMMUNICATION = 1,
 	COMM_FULL_COMMUNICATION = 2,
-}ComM_ModeType;
+} ComM_ModeType;
 
 /** Initialization status of ComM. */
 typedef enum {

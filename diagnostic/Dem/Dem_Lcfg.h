@@ -87,7 +87,7 @@ typedef struct {
 typedef struct {
 	uint16	RecordNumber;						// (1)
 	uint16	DataSize;							// (1)
-	Dem_CallbackGetExtDataRecordFncType	CallbackGetExtDataRecord;// (1)
+	Dem_CallbackGetExtDataRecordFncType	CallbackGetExtDataRecord;// (1)  /** @req DEM139 */
 } Dem_ExtendedDataRecordClassType; /** @req DEM135 */
 
 // 10.2.13 DemExtendedDataClass
@@ -191,7 +191,7 @@ typedef struct {
 
 // 10.2.20
 typedef struct {
-	Dem_PreDebounceNameType		PreDebounceName;						// (1)
+	Dem_PreDebounceNameType						PreDebounceName;				// (1)
 	union {
 	const Dem_PreDebounceMonitorInternalType	*PreDebounceMonitorInternal;	// (0..1)
 	const Dem_PreDebounceCounterBasedType		*PreDebounceCounterBased;		// (0..1)

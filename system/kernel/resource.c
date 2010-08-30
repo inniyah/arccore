@@ -104,12 +104,12 @@ StatusType GetResource( ResourceType ResID ) {
 			goto err;
 		}
 
-	OsResourceType *rPtr = Os_CfgGetResource(ResID);
+		OsResourceType *rPtr = Os_CfgGetResource(ResID);
 		rv = GetResource_(rPtr);
 	}
 
 	if (rv != E_OK)
-	    goto err;
+		goto err;
 
 	OS_STD_END_1(OSServiceId_GetResource,ResID);
 }
@@ -134,7 +134,7 @@ StatusType ReleaseResource( ResourceType ResID) {
 		if ( Os_SchedulerResourceIsFree() ) {
 			rv = E_OS_NOFUNC;
 			goto err;
-	} else {
+		} else {
 			Os_ReleaseSchedulerResource();
 		}
 	} else {
@@ -256,12 +256,12 @@ StatusType ReleaseResource_( OsResourceType * rPtr ) {
 		return E_OS_NOFUNC;
 	}
 
-        // Release it...
-        rPtr->owner = (TaskType) (-1);
-        TAILQ_REMOVE(&Os_TaskGetCurrent()->resource_head, rPtr, listEntry);
-        os_pcb_set_prio(Os_TaskGetCurrent(), rPtr->old_task_prio);
-        return E_OK;
-	}
+	// Release it...
+	rPtr->owner = (TaskType) (-1);
+	TAILQ_REMOVE(&Os_TaskGetCurrent()->resource_head, rPtr, listEntry);
+	os_pcb_set_prio(Os_TaskGetCurrent(), rPtr->old_task_prio);
+	return E_OK;
+}
 
 
 void Os_ResourceGetInternal( void ) {

@@ -25,7 +25,7 @@
 #ifndef RTE_H_
 #define RTE_H_
 
-
+#include "Std_Types.h"
 
 /* Contract 
  * rte_sws_1143
@@ -55,7 +55,6 @@
 
 
 // Errors
-typedef uint8 Std_ReturnType;
 #define RTE_E_OK				((Std_ReturnType) 0)
 #define RTE_E_INVALID			((Std_ReturnType) 1)
 #define RTE_E_COMMS_ERROR		((Std_ReturnType) 128)
@@ -129,9 +128,7 @@ typedef uint8 Std_ReturnType;
 //
 
 
-// RTE Lifecycle API reference.( see chap 5.8 )
-Std_ReturnType Rte_Start( void );
-Std_ReturnType Rte_Stop( void );
+
 
 #endif /*RTE_H_*/
 

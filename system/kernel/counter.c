@@ -211,7 +211,7 @@ void Os_CounterInit( void ) {
 		aPtr = Os_CfgGetAlarmObj(i);
 		cPtr = aPtr->counter;
 		SLIST_INSERT_HEAD(&cPtr->alarm_head,aPtr, alarm_list);
-		}
+	}
 
 	/* Add the schedule tables to counters */
 	for(int i=0; i < Os_CfgGetSchedCnt(); i++ ) {

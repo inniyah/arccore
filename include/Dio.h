@@ -80,9 +80,9 @@ typedef uint16 Dio_PortLevelType;
 #define DIO_SW_MINOR_VERSION	0
 #define DIO_SW_PATCH_VERSION	0
 
-#define DIO_AR_MAJOR_VERSION     2
-#define DIO_AR_MINOR_VERSION     2 
-#define DIO_AR_PATCH_VERSION     1 
+#define DIO_AR_MAJOR_VERSION	2
+#define DIO_AR_MINOR_VERSION	2 
+#define DIO_AR_PATCH_VERSION	1 
 
 #include "Dio_Cfg.h"
 

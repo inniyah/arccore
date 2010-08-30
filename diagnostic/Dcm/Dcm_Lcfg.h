@@ -97,32 +97,32 @@ typedef Std_ReturnType (*Dcm_CallbackEcuResetType)(uint8 resetType,	Dcm_Negative
 
 // 10.2.44
 typedef struct {
-	Dcm_SesCtrlType DspSessionLevel; // (1)
-	uint16 DspSessionP2ServerMax; // (1)
-	uint16 DspSessionP2StarServerMax; // (1)
-	boolean Arc_EOL;
+	Dcm_SesCtrlType	DspSessionLevel;			// (1)
+	uint16			DspSessionP2ServerMax;		// (1)
+	uint16			DspSessionP2StarServerMax;	// (1)
+	boolean			Arc_EOL;
 } Dcm_DspSessionRowType; /** @req DCM072 */
 
 // 10.2.42
 typedef struct {
-	Dcm_SecLevelType DspSecurityLevel; // (1)
-	uint16 DspSecurityDelayTimeOnBoot; // (1)
-	uint8 DspSecurityNumAttDelay; // (1)
-	uint16 DspSecurityDelayTime; // (1)
-	uint8 DspSecurityNumAttLock; // (1)
-	uint8 DspSecurityADRSize; // (0..1)
-	uint8 DspSecuritySeedSize; // (1)
-	uint8 DspSecurityKeySize; // (1)
-	Dcm_CallbackGetSeedFncType GetSeed;
-	Dcm_CallbackCompareKeyFncType CompareKey;
-	boolean Arc_EOL;
+	Dcm_SecLevelType				DspSecurityLevel;			// (1)
+	uint16							DspSecurityDelayTimeOnBoot;	// (1)
+	uint8							DspSecurityNumAttDelay;		// (1)
+	uint16							DspSecurityDelayTime;		// (1)
+	uint8							DspSecurityNumAttLock;		// (1)
+	uint8							DspSecurityADRSize;			// (0..1)
+	uint8							DspSecuritySeedSize;		// (1)
+	uint8							DspSecurityKeySize;			// (1)
+	Dcm_CallbackGetSeedFncType		GetSeed;
+	Dcm_CallbackCompareKeyFncType	CompareKey;
+	boolean							Arc_EOL;
 } Dcm_DspSecurityRowType; /** @req DCM073 */
 
 // 10.2.23
 typedef struct {
-	uint8 DspDidControlRecordSize; // (1)
-	uint8 DspDidControlOptionRecordSize; // (1)
-	uint8 DspDidControlStatusRecordSize; // (1)
+	uint8 DspDidControlRecordSize;			// (1)
+	uint8 DspDidControlOptionRecordSize;	// (1)
+	uint8 DspDidControlStatusRecordSize;	// (1)
 } Dcm_DspDidControlRecordSizesType;
 
 // 10.2.26
@@ -153,7 +153,7 @@ typedef struct {
 	const Dcm_DspDidReadType		*DspDidRead;	// (0..1)
 	const Dcm_DspDidWriteType		*DspDidWrite;	// (0..1)
 	const Dcm_DspDidControlType		*DspDidControl;	// (0..1)
-} Dcm_DspDidAccessType;
+} Dcm_DspDidAccessType; /** @req DCM609 */
 
 // 10.2.24
 typedef struct {
@@ -161,7 +161,7 @@ typedef struct {
 	boolean					DspDidFixedLength;			// (1)		/** @req DCM608 */
 	uint8					DspDidScalingInfoSize;		// (0..1)	/** @req DCM611 */
 	// Containers
-	Dcm_DspDidAccessType DspDidAccess; // (1)
+	Dcm_DspDidAccessType	DspDidAccess;				// (1)
 } Dcm_DspDidInfoType; /** @req DCM607 */
 
 // 10.2.22
@@ -188,13 +188,13 @@ typedef struct _Dcm_DspDidType {
 
 // 10.2.30
 typedef struct {
-	const Dcm_DspSessionRowType **DspEcuResetSessionRef; // (1..*)
-	const Dcm_DspSecurityRowType **DspEcuResetSecurityLevelRef; // (1..*)
+	const Dcm_DspSessionRowType		**DspEcuResetSessionRef;		// (1..*)
+	const Dcm_DspSecurityRowType	**DspEcuResetSecurityLevelRef;	// (1..*)
 } Dcm_DspEcuResetType; /** @req DCM657 */
 
 // 10.2.31
 typedef struct {
-	boolean DspPidUsePort; // (1)
+	boolean							DspPidUsePort;		// (1)
 	uint8							DspPidIdentifier;	// (1)	/** @req DCM627 */
 	uint8							DspPidSize; 		// (1)	/** @req DCM628 */
 	Dcm_CallbackGetPIDValueFncType	DspGetPidValFnc;	// (1)	/** @req DCM629 */
@@ -202,9 +202,9 @@ typedef struct {
 
 // 10.2.33
 typedef struct {
-	boolean DspDTCInfoSubFuncSupp; // (1)
-	uint8 DspDTCInfoSubFuncLevel; // (1)
-	const Dcm_DspSecurityRowType **DspDTCInfoSecLevelRef; // (1..*)
+	boolean							DspDTCInfoSubFuncSupp;		// (1)
+	uint8							DspDTCInfoSubFuncLevel;		// (1)
+	const Dcm_DspSecurityRowType	**DspDTCInfoSecLevelRef;	// (1..*)
 } Dcm_DspReadDTCRowType; /** @req DCM073 */
 
 // 10.2.32
@@ -215,8 +215,8 @@ typedef struct {
 
 // 10.2.34
 typedef struct {
-	uint8 DspRequestControl; // (1)
-	uint8 DspRequestControlOutBufferSize; // (1)
+	uint8 DspRequestControl;				// (1)
+	uint8 DspRequestControlOutBufferSize;	// (1)
 	uint8 DspRequestControlTestId;			// (1)	/** @req DCM656 */
 } Dcm_DspRequestControlType; /** @req DCM637 */
 
@@ -246,15 +246,15 @@ typedef struct {
 // 10.2.36
 typedef struct {
 	// Containers
-	const Dcm_DspRoutineAuthorizationType *DspRoutineAuthorization; // (1)
-	const Dcm_DspRoutineRequestResType *DspRoutineRequestRes; // (0..1)
-	const Dcm_DspRoutineStopType *DspRoutineStop; // (0..1)
-	const Dcm_DspStartRoutineType *DspStartRoutine; // (1)
+	const Dcm_DspRoutineAuthorizationType	*DspRoutineAuthorization;	// (1)
+	const Dcm_DspRoutineRequestResType		*DspRoutineRequestRes;		// (0..1)
+	const Dcm_DspRoutineStopType			*DspRoutineStop;			// (0..1)
+	const Dcm_DspStartRoutineType			*DspStartRoutine;			// (1)
 } Dcm_DspRoutineInfoType; /** @req DCM643 */
 
 // 10.2.35
 typedef struct {
-	boolean DspRoutineUsePort; // (1)
+	boolean								DspRoutineUsePort;			// (1)
 	uint16								DspRoutineIdentifier;		// (1)		/** @req DCM641 */
 	const Dcm_DspRoutineInfoType		*DspRoutineInfoRef;			// (1)		/** @req DCM642 */
 	Dcm_CallbackStartFncType			DspStartRoutineFnc;			// (0..1)	/** @req DCM664 */
@@ -289,13 +289,13 @@ typedef struct {
 // 10.2.45
 typedef struct {
 	// Containers
-	const Dcm_DspTestResultObdmidTidType *DspTestResultObdmidTid; // (0..*)
-	const Dcm_DspTestResultTidType *DspTestResultTid; // (0..*)
+	const Dcm_DspTestResultObdmidTidType	*DspTestResultObdmidTid;	// (0..*)
+	const Dcm_DspTestResultTidType			*DspTestResultTid;			// (0..*)
 } Dcm_DspTestResultByObdmidType; /** @req DCM682 */
 
 // 10.2.48
 typedef struct {
-	boolean DspVehInfoUsePort; // (1)
+	boolean								DspVehInfoUsePort;		// (1)
 	uint8								DspVehInfoType;			// (1)	/** @req DCM631 */
 	uint8								DspVehInfoSize;			// (1)	/** @req DCM632 */
 	Dcm_CallbackGetInfoTypeValueFncType	DspGetVehInfoTypeFnc;	// (1)	/** @req DCM633 */
@@ -303,20 +303,20 @@ typedef struct {
 
 // 10.2.21
 typedef struct {
-	uint8 DspMaxDidToRead; // (0..1)
+	uint8								DspMaxDidToRead; // (0..1)	/** @req DCM638 */
 	// Containers
-	const Dcm_DspDidType *DspDid; // (0..*)
-	const Dcm_DspDidInfoType *DspDidInfo; // (0..*)
-	const Dcm_DspEcuResetType *DspEcuReset; // (0..*)
-	const Dcm_DspPidType *DspPid; // (0..*)
-	const Dcm_DspReadDTCType *DspReadDTC; // (1)
-	const Dcm_DspRequestControlType *DspRequestControl; // (0..*)
-	const Dcm_DspRoutineType *DspRoutine; // (0..*)
-	const Dcm_DspRoutineInfoType *DspRoutineInfo; // (0..*)
-	const Dcm_DspSecurityType *DspSecurity; // (0..*)
-	const Dcm_DspSessionType *DspSession; // (1)
-	const Dcm_DspTestResultByObdmidType *DspTestResultByObdmid; // (0..*)
-	const Dcm_DspVehInfoType *DspVehInfo;
+	const Dcm_DspDidType				*DspDid;	// (0..*)
+	const Dcm_DspDidInfoType			*DspDidInfo;			// (0..*)
+	const Dcm_DspEcuResetType			*DspEcuReset;			// (0..*)
+	const Dcm_DspPidType				*DspPid;				// (0..*)
+	const Dcm_DspReadDTCType			*DspReadDTC;			// (1)
+	const Dcm_DspRequestControlType		*DspRequestControl;		// (0..*)
+	const Dcm_DspRoutineType			*DspRoutine;			// (0..*)
+	const Dcm_DspRoutineInfoType		*DspRoutineInfo;		// (0..*)
+	const Dcm_DspSecurityType			*DspSecurity;			// (0..*)
+	const Dcm_DspSessionType			*DspSession;			// (1)
+	const Dcm_DspTestResultByObdmidType	*DspTestResultByObdmid;	// (0..*)
+	const Dcm_DspVehInfoType			*DspVehInfo;
 } Dcm_DspType;
 
 /*******
@@ -324,20 +324,20 @@ typedef struct {
  *******/
 // 10.2.4 DcmDsdService
 typedef struct {
-	uint8 DsdSidTabServiceId; // (1)
-	boolean DsdSidTabSubfuncAvail; // (1)
-	const Dcm_DspSecurityRowType **DsdSidTabSecurityLevelRef; // (1..*)
-	const Dcm_DspSessionRowType **DsdSidTabSessionLevelRef; // (1..*)
+	uint8							DsdSidTabServiceId;				// (1)
+	boolean							DsdSidTabSubfuncAvail;			// (1)
+	const Dcm_DspSecurityRowType	**DsdSidTabSecurityLevelRef;	// (1..*)
+	const Dcm_DspSessionRowType		**DsdSidTabSessionLevelRef;		// (1..*)
 	// Containers
-	boolean Arc_EOL;
+	boolean							Arc_EOL;
 } Dcm_DsdServiceType;
 
 // 10.2.3 DcmDsdServiceTable
 typedef struct {
-	uint8 DsdSidTabId; // (1)
+	uint8						DsdSidTabId; // (1)
 	// Containers
-	const Dcm_DsdServiceType *DsdService; // (1..*)
-	boolean Arc_EOL;
+	const Dcm_DsdServiceType	*DsdService; // (1..*)
+	boolean						Arc_EOL;
 } Dcm_DsdServiceTableType; /** @req DCM071 */
 
 // 10.2.2 DcmDsd
@@ -374,33 +374,33 @@ typedef struct {
 
 // 10.2.6
 typedef struct {
-	uint8 DslBufferID; // (1) // Kept for reference, will be removed (polite calls will be made).
-	uint16 DslBufferSize; // (1)
-	PduInfoType pduInfo;
-	Dcm_DslBufferRuntimeType *externalBufferRuntimeData;
+	uint8						DslBufferID;	// (1) // Kept for reference, will be removed (polite calls will be made).
+	uint16						DslBufferSize;	// (1)
+	PduInfoType					pduInfo;
+	Dcm_DslBufferRuntimeType	*externalBufferRuntimeData;
 } Dcm_DslBufferType; /** @req DCM032 */
 
 // 10.2.7
 typedef struct {
-	Dcm_CallbackStartProtocolFncType StartProtocol;
-	Dcm_CallbackStopProtocolFncType StopProtocol;
-	boolean Arc_EOL;
+	Dcm_CallbackStartProtocolFncType	StartProtocol;
+	Dcm_CallbackStopProtocolFncType		StopProtocol;
+	boolean								Arc_EOL;
 } Dcm_DslCallbackDCMRequestServiceType; /** @req DCM679 */
 
 // 10.2.8
 typedef struct {
-	boolean DslDiagRespForceRespPendEn; // (1)
-	uint8 DslDiagRespMaxNumRespPend; // (1)
+	boolean	DslDiagRespForceRespPendEn;	// (1)
+	uint8	DslDiagRespMaxNumRespPend;	// (1)
 } Dcm_DslDiagRespType;
 
 // 10.2.18
 typedef struct {
-	uint16 TimStrP2ServerMax; // (1)
-	uint16 TimStrP2ServerMin; // (1)
-	uint16 TimStrP2StarServerMax; // (1)
-	uint16 TimStrP2StarServerMin; // (1)
-	uint16 TimStrS3Server; // (1)
-	const boolean Arc_EOL;
+	uint16			TimStrP2ServerMax;		// (1)
+	uint16			TimStrP2ServerMin;		// (1)
+	uint16			TimStrP2StarServerMax;	// (1)
+	uint16			TimStrP2StarServerMin;	// (1)
+	uint16 			TimStrS3Server;			// (1)
+	const boolean	Arc_EOL;
 } Dcm_DslProtocolTimingRowType;
 
 // 10.2.17
@@ -424,12 +424,12 @@ typedef struct Dcm_DslProtocolRxType_t Dcm_DslProtocolRxType;
 
 // 10.2.13
 struct Dcm_DslProtocolRxType_t {
-	const Dcm_DslMainConnectionType *DslMainConnectionParent; // (1) /* Cross reference. */
-	const Dcm_ProtocolAddrTypeType DslProtocolAddrType; // (1)
-	const uint32 DcmDslProtocolRxPduId; // (1)
-	const uint32 DcmDslProtocolRxTesterSourceAddr_v4; // (1)
-	const uint8 DcmDslProtocolRxChannelId_v4; // (1)
-	const boolean Arc_EOL;
+	const Dcm_DslMainConnectionType	*DslMainConnectionParent;				// (1) /* Cross reference. */
+	const Dcm_ProtocolAddrTypeType	DslProtocolAddrType;					// (1)
+	const uint32					DcmDslProtocolRxPduId;					// (1)
+	const uint32					DcmDslProtocolRxTesterSourceAddr_v4;	// (1)
+	const uint8						DcmDslProtocolRxChannelId_v4;			// (1)
+	const boolean					Arc_EOL;
 };
 
 /* Makes it possible to cross-reference structures. */
@@ -438,9 +438,9 @@ typedef struct Dcm_DslProtocolTxType_t Dcm_DslProtocolTxType;
 
 // 10.2.14
 struct Dcm_DslProtocolTxType_t {
-	const Dcm_DslMainConnectionType *DslMainConnectionParent; // (1) /* Cross reference. */
-	const uint32 DcmDslProtocolTxPduId; // (1) /* Will be removed (polite), kept for reference. */
-	const boolean Arc_EOL;
+	const Dcm_DslMainConnectionType	*DslMainConnectionParent;	// (1) /* Cross reference. */
+	const uint32					DcmDslProtocolTxPduId;		// (1) /* Will be removed (polite), kept for reference. */
+	const boolean					Arc_EOL;
 };
 
 // -- UH
@@ -462,12 +462,12 @@ typedef struct Dcm_DslConnectionType_t Dcm_DslConnectionType;
 
 // 10.2.12
 struct Dcm_DslMainConnectionType_t { // Cross referenced from Dcm_DslProtocolRxType_t.
-	const Dcm_DslConnectionType *DslConnectionParent; // Cross reference.
-	const Dcm_DslPeriodicTransmissionType *DslPeriodicTransmissionConRef; // (0..1)
-	const Dcm_DslResponseOnEventType *DslROEConnectionRef; // (0..*)
+	const Dcm_DslConnectionType				*DslConnectionParent; // Cross reference.
+	const Dcm_DslPeriodicTransmissionType	*DslPeriodicTransmissionConRef;	// (0..1)
+	const Dcm_DslResponseOnEventType		*DslROEConnectionRef;			// (0..*)
 	// Containers
-	const Dcm_DslProtocolRxType *DslProtocolRx; // (1..*) Remove?
-	const Dcm_DslProtocolTxType *DslProtocolTx; // (1)
+	const Dcm_DslProtocolRxType				*DslProtocolRx;					// (1..*) Remove?
+	const Dcm_DslProtocolTxType				*DslProtocolTx;					// (1)
 };
 
 /* Make it possible to cross reference. */
@@ -476,11 +476,11 @@ typedef struct Dcm_DslProtocolRowType_t Dcm_DslProtocolRowType;
 // 10.2.11
 struct Dcm_DslConnectionType_t {
 	// Containers
-	const Dcm_DslProtocolRowType *DslProtocolRow; // Cross reference.
-	const Dcm_DslMainConnectionType *DslMainConnection; // (1)
-	const Dcm_DslPeriodicTransmissionType *DslPeriodicTransmission; // (0..1)
-	const Dcm_DslResponseOnEventType *DslResponseOnEvent; // (0..1)
-	boolean Arc_EOL;
+	const Dcm_DslProtocolRowType			*DslProtocolRow;			// Cross reference.
+	const Dcm_DslMainConnectionType			*DslMainConnection;			// (1)
+	const Dcm_DslPeriodicTransmissionType	*DslPeriodicTransmission;	// (0..1)
+	const Dcm_DslResponseOnEventType		*DslResponseOnEvent;		// (0..1)
+	boolean 								Arc_EOL;
 };
 
 typedef enum {
@@ -507,88 +507,88 @@ typedef enum {
 #define DCM_DSL_LOCAL_BUFFER_LENGTH 8
 
 typedef struct {
-	Dcm_DslBufferUserType status;
-	uint8 buffer[DCM_DSL_LOCAL_BUFFER_LENGTH];
-	PduLengthType messageLenght;
-	PduInfoType PduInfo;
+	Dcm_DslBufferUserType	status;
+	uint8					buffer[DCM_DSL_LOCAL_BUFFER_LENGTH];
+	PduLengthType			messageLenght;
+	PduInfoType				PduInfo;
 } Dcm_DslLocalBufferType;
 
 
 typedef struct {
-	PduIdType diagReqestRxPduId;  // Tester request PduId.
-	uint32 stateTimeoutCount; // Counter for timeout.
-	Dcm_DslBufferUserType externalRxBufferStatus;
-	PduInfoType diagnosticRequestFromTester;
-	PduInfoType diagnosticResponseFromDsd;
-	Dcm_DslBufferUserType externalTxBufferStatus;
-	boolean protocolStarted; // Has the protocol been started?
-	Dcm_DslLocalBufferType localRxBuffer;
-	Dcm_DslLocalBufferType localTxBuffer;
-	boolean diagnosticActiveComM; //
-	uint16 S3ServerTimeoutCount;
-	uint8 responsePendingCount;
-	Dcm_SecLevelType securityLevel;
-	Dcm_SesCtrlType sessionControl;
+	PduIdType				diagReqestRxPduId;  // Tester request PduId.
+	uint32					stateTimeoutCount; // Counter for timeout.
+	Dcm_DslBufferUserType	externalRxBufferStatus;
+	PduInfoType				diagnosticRequestFromTester;
+	PduInfoType				diagnosticResponseFromDsd;
+	Dcm_DslBufferUserType	externalTxBufferStatus;
+	boolean					protocolStarted; // Has the protocol been started?
+	Dcm_DslLocalBufferType	localRxBuffer;
+	Dcm_DslLocalBufferType	localTxBuffer;
+	boolean					diagnosticActiveComM; //
+	uint16					S3ServerTimeoutCount;
+	uint8					responsePendingCount;
+	Dcm_SecLevelType		securityLevel;
+	Dcm_SesCtrlType			sessionControl;
 } Dcm_DslRunTimeProtocolParametersType;
 
 // 10.2.10
 struct Dcm_DslProtocolRowType_t { // Cross referenced from Dcm_DslConnectionType_t.
-	Dcm_ProtocolType DslProtocolID; // (1)
-	boolean DslProtocolIsParallelExecutab; // (1)
-	uint16 DslProtocolPreemptTimeout; // (1)
-	uint8 DslProtocolPriority; // (1)
-	Dcm_ProtocolTransTypeType DslProtocolTransType; // (1)
-	const Dcm_DslBufferType *DslProtocolRxBufferID; // (1)
-	const Dcm_DslBufferType *DslProtocolTxBufferID; // (1)
-	const Dcm_DsdServiceTableType *DslProtocolSIDTable; // (1)
-	const Dcm_DslProtocolTimingRowType *DslProtocolTimeLimit; // (0..1)
+	Dcm_ProtocolType						DslProtocolID; // (1)
+	boolean									DslProtocolIsParallelExecutab; // (1)
+	uint16									DslProtocolPreemptTimeout; // (1)
+	uint8									DslProtocolPriority; // (1)
+	Dcm_ProtocolTransTypeType				DslProtocolTransType; // (1)
+	const Dcm_DslBufferType					*DslProtocolRxBufferID; // (1)
+	const Dcm_DslBufferType					*DslProtocolTxBufferID; // (1)
+	const Dcm_DsdServiceTableType			*DslProtocolSIDTable; // (1)
+	const Dcm_DslProtocolTimingRowType		*DslProtocolTimeLimit; // (0..1)
 	// Containers
-	const Dcm_DslConnectionType *DslConnection; // (1..*)
+	const Dcm_DslConnectionType				*DslConnection; // (1..*)
 	// Reference to runtime parameters to this protocol.
-	Dcm_DslRunTimeProtocolParametersType *DslRunTimeProtocolParameters; // Maybe this needs to change to index.
-	boolean Arc_EOL;
+	Dcm_DslRunTimeProtocolParametersType	*DslRunTimeProtocolParameters; // Maybe this needs to change to index.
+	boolean									Arc_EOL;
 };
 
 // 10.2.9
 typedef struct {
-// Containers
-	const Dcm_DslProtocolRxType *DslProtocolRxGlobalList; // (1..*)  A polite list for all RX protocol configurations.
-	const Dcm_DslProtocolTxType *DslProtocolTxGlobalList; // (1..*)  A polite list for all TX protocol configurations.
-const Dcm_DslProtocolRowType *DslProtocolRowList; // (1..*)
+	// Containers
+	const Dcm_DslProtocolRxType		*DslProtocolRxGlobalList;	// (1..*)  A polite list for all RX protocol configurations.
+	const Dcm_DslProtocolTxType		*DslProtocolTxGlobalList;	// (1..*)  A polite list for all TX protocol configurations.
+	const Dcm_DslProtocolRowType	*DslProtocolRowList;		// (1..*)
 } Dcm_DslProtocolType;
 
 // 10.2.19
 typedef struct {
-Dcm_CallbackIndicationFncType Indication;
-boolean Arc_EOL;
+	Dcm_CallbackIndicationFncType	Indication;
+	boolean							Arc_EOL;
 } Dcm_DslServiceRequestIndicationType; /** @req DCM681 */
 
 // 10.2.20
 typedef struct {
-Dcm_CallbackGetSesChgPermissionFncType GetSesChgPermission;
-Dcm_CallbackChangeIndicationFncType ChangeIndication;
-Dcm_CallbackConfirmationRespPendFncType ConfirmationRespPend;
-boolean Arc_EOL;
+	Dcm_CallbackGetSesChgPermissionFncType	GetSesChgPermission;
+	Dcm_CallbackChangeIndicationFncType		ChangeIndication;
+	Dcm_CallbackConfirmationRespPendFncType	ConfirmationRespPend;
+	boolean									Arc_EOL;
 } Dcm_DslSessionControlType; /** @req DCM680 */
 
 // 10.2.5
 typedef struct {
-// Containers
-const Dcm_DslBufferType *DslBuffer; // (1..256)
-const Dcm_DslCallbackDCMRequestServiceType *DslCallbackDCMRequestService; // (1..*)
-const Dcm_DslDiagRespType *DslDiagResp; // (1)
-const Dcm_DslProtocolType *DslProtocol; // (1)
-const Dcm_DslProtocolTimingType *DslProtocolTiming; // (1)
-const Dcm_DslServiceRequestIndicationType *DslServiceRequestIndication; // (0..*)
-const Dcm_DslSessionControlType *DslSessionControl; // (1..*)
+	// Containers
+	const Dcm_DslBufferType						*DslBuffer;						// (1..256)
+	const Dcm_DslCallbackDCMRequestServiceType	*DslCallbackDCMRequestService;	// (1..*)
+	const Dcm_DslDiagRespType					*DslDiagResp;					// (1)
+	const Dcm_DslProtocolType					*DslProtocol;					// (1)
+	const Dcm_DslProtocolTimingType				*DslProtocolTiming;				// (1)
+	const Dcm_DslServiceRequestIndicationType	*DslServiceRequestIndication;	// (0..*)
+	const Dcm_DslSessionControlType				*DslSessionControl;				// (1..*)
 } Dcm_DslType;
 
 // 10.2.1 Dcm
 typedef struct {
-// Containers
-const Dcm_DspType *Dsp; //	(1)
-const Dcm_DsdType *Dsd; //	(1)
-const Dcm_DslType *Dsl; //	(1)
+	// Containers
+	const Dcm_DspType *Dsp; //	(1)
+	const Dcm_DsdType *Dsd; //	(1)
+	const Dcm_DslType *Dsl; //	(1)
 } Dcm_ConfigType;
 
 /*

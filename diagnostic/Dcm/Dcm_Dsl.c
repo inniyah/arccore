@@ -23,7 +23,6 @@
 #include "Mcu.h"
 #include "Dcm.h"
 #include "Dcm_Internal.h"
-#include "Det.h"
 #include "MemMap.h"
 #include "ComM_Dcm.h"
 #include "PduR_Dcm.h"
@@ -103,8 +102,7 @@ static inline void stopS3SessionTimer(Dcm_DslRunTimeProtocolParametersType *runt
 //	This function implements the requirement DCM139 when
 // 	transition from one session to another.
 //
-static void changeDiagnosticSession(Dcm_DslRunTimeProtocolParametersType *runtime,
-		Dcm_SesCtrlType newSession) {
+static void changeDiagnosticSession(Dcm_DslRunTimeProtocolParametersType *runtime, Dcm_SesCtrlType newSession) {
 
 	/** @req DCM139 */
 
@@ -120,7 +118,7 @@ static void changeDiagnosticSession(Dcm_DslRunTimeProtocolParametersType *runtim
 		break;
 
 	default:
-		// TODO: Log this error.
+		DET_REPORTERROR(MODULE_ID_DCM, 0, DCM_CHANGE_DIAGNOSTIC_SESSION_ID, DCM_E_PARAM);
 		DEBUG(DEBUG_MEDIUM, "Old session invalid");
 		break;
 	}
@@ -135,7 +133,7 @@ static void changeDiagnosticSession(Dcm_DslRunTimeProtocolParametersType *runtim
 		break;
 
 	default:
-		// TODO: Log this error.
+		DET_REPORTERROR(MODULE_ID_DCM, 0, DCM_CHANGE_DIAGNOSTIC_SESSION_ID, DCM_E_PARAM);
 		DEBUG(DEBUG_MEDIUM, "New session invalid");
 		break;
 	}
@@ -629,7 +627,7 @@ void DslRxIndicationFromPduR(PduIdType dcmRxPduId, NotifResultType result) {
 						runtime->diagReqestRxPduId = dcmRxPduId;
 						DsdDslDataIndication(  // qqq: We are inside a critical section.
 								&(runtime->diagnosticRequestFromTester),
-								protocolRow->DslProtocolSIDTable,
+								protocolRow->DslProtocolSIDTable,	/** @req DCM035 */
 								protocolRx->DslProtocolAddrType,
 								mainConnection->DslProtocolTx->DcmDslProtocolTxPduId,
 								&(runtime->diagnosticResponseFromDsd),
@@ -736,7 +734,7 @@ void DslTxConfirmation(PduIdType dcmTxPduId, NotifResultType result) {
 		case PROVIDED_TO_PDUR: {
 			ComM_DCM_InactivateDiagnostic(); /** @req DCM164 */
 			startS3SessionTimer(runtime, protocolRow); /** @req DCM141 */
-			releaseExternalRxTxBuffers(protocolRow, runtime); /** @req DCM118 *//** @req DCM353 *//** @req DCM354 */
+			releaseExternalRxTxBuffers(protocolRow, runtime); /** @req DCM118 *//** @req DCM352 *//** @req DCM353 *//** @req DCM354 */
 			externalBufferReleased = TRUE;
 			DEBUG( DEBUG_MEDIUM, "Released external buffer OK!\n");
 			DsdDataConfirmation(mainConnection->DslProtocolTx->DcmDslProtocolTxPduId, result); /** @req DCM117 *//** @req DCM235 */

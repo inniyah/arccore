@@ -61,13 +61,11 @@
           Det_ReportError(MODULE_ID_CANIF, 0, _api, _err); \
           return; \
         }
-#undef DET_REPORTERROR
 #define DET_REPORTERROR(_x,_y,_z,_q) Det_ReportError(_x, _y, _z, _q)
 
 #else
 #define VALIDATE(_exp,_api,_err )
 #define VALIDATE_NO_RV(_exp,_api,_err )
-#undef DET_REPORTERROR
 #define DET_REPORTERROR(_x,_y,_z,_q)
 #endif
 
@@ -168,7 +166,7 @@ void CanIf_InitController(uint8 Controller, uint8 ConfigurationIndex)
     else if (mode != CANIF_CS_STOPPED)
     {
       VALIDATE_NO_RV(FALSE, CANIF_INIT_CONTROLLER_ID, CANIF_E_PARAM_CONTROLLER_MODE); // CANIF092
-   }
+    }
   }
   else
   {
@@ -798,9 +796,9 @@ void CanIf_RxIndication(uint8 Hrh, Can_IdType CanId, uint8 CanDlc,
           // Send Can frame to CAN TP
 #if defined(USE_CANTP)
             {
-                PduInfoType CanTpRxPdu;
-                CanTpRxPdu.SduLength = CanDlc;
-                CanTpRxPdu.SduDataPtr = (uint8 *)CanSduPtr;
+        	    PduInfoType CanTpRxPdu;
+        	    CanTpRxPdu.SduLength = CanDlc;
+        	    CanTpRxPdu.SduDataPtr = (uint8 *)CanSduPtr;
                 CanTp_RxIndication(entry->CanIfCanRxPduId, &CanTpRxPdu);
             }
             return;

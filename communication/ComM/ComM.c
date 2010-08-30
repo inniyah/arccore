@@ -86,7 +86,7 @@ void ComM_Init( ComM_ConfigType * Config ){
 		ComM_Internal.Channels[i].UserRequestMask = 0;
 		ComM_Internal.Channels[i].InhibitionStatus = COMM_INHIBITION_STATUS_NONE;
 		ComM_Internal.Channels[i].NmIndicationMask = COMM_NM_INDICATION_NONE;
-}
+	}
 
 	for (int i = 0; i < COMM_USER_COUNT; ++i) {
 		ComM_Internal.Users[i].RequestedMode = COMM_NO_COMMUNICATION;
@@ -156,7 +156,7 @@ static Std_ReturnType ComM_Internal_RequestComMode(
 		Std_ReturnType status = ComM_Internal_UpdateChannelState(Channel, TRUE);
 		if (status > requestStatus) requestStatus = status;
 
-}
+	}
 
 	return requestStatus;
 }

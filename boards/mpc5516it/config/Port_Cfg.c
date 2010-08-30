@@ -33,7 +33,7 @@
 #define 	PCR_ADC			(0)
 #define		PCR_IO_INPUT	PORT_PCR_BOOTCFG
 #define		PCR_IO_OUTPUT	PORT_OBE_ENABLE
-#define	PCR_CAN			(0)
+#define		PCR_CAN			(0)
 #define 	PCR_SPI			PORT_PCR_BOOTCFG
 #define 	PCR_I2C			PORT_PCR_BOOTCFG
 

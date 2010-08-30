@@ -13,30 +13,15 @@
  * for more details.
  * -------------------------------- Arctic Core ------------------------------*/
 
+#include <stdlib.h>
+#include "Os.h"
+
+#include "internal.h"
+#include "arc.h"
+#include "arch.h"
 
 
-
-
-
-#include "PduR.h"
-
-#if (PDUR_ZERO_COST_OPERATION == STD_OFF)
-#include "Det.h"
-
-
-/**
- * Called by the COM-layer in order to send a PDU through a protocol interface.
- */
-Std_ReturnType PduR_ComTransmit(PduIdType ComTxPduId, const PduInfoType* PduInfoPtr) {
-	BufReq_ReturnType retVal = BUFREQ_NOT_OK;
-#if (PDUR_COM_SUPPORT == STD_ON)
-	PduR_DevCheck(ComTxPduId,PduInfoPtr,0x15, E_NOT_OK);
-
-	//DEBUG(DEBUG_LOW,"PduR_ComTransmit: received transmit request with id %d and data %d\n", ComTxPduId, *PduInfoPtr->SduDataPtr);
-	PduRRoutingPath_type *route = &PduRConfig->PduRRoutingTable->PduRRoutingPath[ComTxPduId];
-	retVal = route->FctPtrs.TargetTransmitFctPtr(route->PduRDestPdu.DestPduId, PduInfoPtr);
-#endif
-	return retVal;
+StatusType GetActiveApplicationMode( AppModeType* mode) {
+	 *mode = os_sys.appMode;
+	 return E_OK;
 }
-
-#endif
