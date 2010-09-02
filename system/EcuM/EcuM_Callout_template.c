@@ -75,6 +75,9 @@
 #if defined(USE_LINSM)
 #include "LinSM.h"
 #endif
+#if defined(USE_WDGM)
+#include "WdgM.h"
+#endif
 
 
 
@@ -118,8 +121,10 @@ void EcuM_AL_DriverInitOne(const EcuM_ConfigType *ConfigPtr)
 	Gpt_Init(ConfigPtr->GptConfig);
 #endif
 
-	// Setup watchdog
-	// TODO
+#if defined(USE_WDGM)
+	// Setup the WDGM
+	WdgM_Init(ConfigPtr->WdgMConfig);
+#endif
 
 #if defined(USE_DMA)
 	// Setup DMA

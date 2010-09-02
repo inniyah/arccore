@@ -64,6 +64,9 @@
 #if defined(USE_LINSM)
 #include "LinSM.h"
 #endif
+#if defined(USE_WDGM)
+#include "WdgM.h"
+#endif
 
 typedef struct
 {
@@ -112,6 +115,9 @@ typedef struct
 #endif
 #if defined(USE_GPT)
     const Gpt_ConfigType* GptConfig;
+#endif
+#if defined(USE_WDGM)
+    const WdgM_ConfigType* WdgMConfig;
 #endif
 } EcuM_ConfigType;
 
