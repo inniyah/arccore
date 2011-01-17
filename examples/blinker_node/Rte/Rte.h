@@ -32,7 +32,7 @@
 #define LED_CHANNEL             DIO_CHANNEL_NAME_LED_CHANNEL
 
 #elif defined(CFG_BRD_STM32_STM3210C)
-#define LED_CHANNEL             LED_CHANNEL1
+#define LED_CHANNEL             LED_CHANNEL3
 
 #elif defined(CFG_BRD_STM32_MCBSTM32)
 #define LED_CHANNEL             LED_CHANNEL1

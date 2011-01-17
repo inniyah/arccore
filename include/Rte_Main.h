@@ -13,19 +13,10 @@
  * for more details.
  * -------------------------------- Arctic Core ------------------------------*/
 
+#ifndef RTE_MAIN_H_
+#define RTE_MAIN_H_
 
+Std_ReturnType Rte_Start( void );
+Std_ReturnType Rte_Stop( void );
 
-
-
-
-
-
-#ifndef COM_RUNTEST_H_
-#define COM_RUNTEST_H_
-
-void RTE_Notification(void);
-void RTE_EngineMain(void);
-void RTE_EngineChangeSpeed(void);
-void RTE_SIL2MESSAGE(void);
-
-#endif /* COM_RUNTEST_H_ */
+#endif /*RTE_MAIN_H_*/

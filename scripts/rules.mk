@@ -63,6 +63,14 @@ ifneq ($(ARCH),)
 include $(ROOTDIR)/$(ARCH_PATH-y)/scripts/gcc.mk
 endif
 include $(ROOTDIR)/scripts/cc_$(COMPILER).mk
+ifneq ($(PCLINT),)
+include $(ROOTDIR)/scripts/cc_pclint.mk
+endif
+ifneq ($(SPLINT),)
+include $(ROOTDIR)/scripts/cc_splint.mk
+endif
+
+
 
 # Get object files
 include ../makefile
@@ -91,6 +99,7 @@ endif
 
 inc-y += $(ROOTDIR)/include
 inc-y += $(ROOTDIR)/include/$(ARCH_FAM)
+inc-y += $(ROOTDIR)/include/$(ARCH_FAM)/$(ARCH)
 
 
 .PHONY clean: 
@@ -127,10 +136,45 @@ inc-y += ../include
 # Some dependency for xxx_offset.c/h also
 -include $(subst .h,.d,$(dep-y))
 
+#LINT:
+LINT_EXCLUDE_PATHS := $(abspath $(LINT_EXCLUDE_PATHS))
+$(info $(LINT_EXCLUDE_PATHS))
+
+LINT_BAD_EXCLUDE_PATHS := $(filter %/,$(LINT_EXCLUDE_PATHS))
+ifneq ($(LINT_BAD_EXCLUDE_PATHS),)
+$(warning LINT_EXCLUDE_PATHS entries must not end in '/'. Ignoring $(LINT_BAD_EXCLUDE_PATHS))
+endif
+
+LINT_NICE_EXCLUDE_PATHS := $(filter-out %/,$(LINT_EXCLUDE_PATHS))
+LINT_NICE_EXCLUDE_PATHS := $(foreach path,$(LINT_NICE_EXCLUDE_PATHS),$(path)/)
+
+ifneq ($(PCLINT),)
+define run_pclint
+$(if 
+$(filter $(dir $(abspath $<)),$(LINT_NICE_EXCLUDE_PATHS)),
+$(info $(abspath $<):0:0: Info: Not running lint check on $(abspath $<)),
+$(Q)$(PCLINT) $(lint_extra) $(addprefix $(lintinc_ext),$(inc-y)) $(addprefix $(lintdef_ext),$(def-y)) $(abspath $<))
+endef
+endif
+
+ifneq ($(SPLINT),)
+define run_splint
+$(if 
+$(filter $(dir $(abspath $<)),$(LINT_NICE_EXCLUDE_PATHS)),
+$(info $(abspath $<):0:0: Info: Not running lint check on $(abspath $<)),
+$(Q)$(SPLINT) $(splint_extra) $(addprefix $(lintinc_ext),$(inc-y)) $(addprefix $(lintdef_ext),$(def-y)) $(abspath $<))
+endef
+endif
+
+
 # Compile
 %.o: %.c
 	@echo "  >> CC $(notdir $<)"
+# compile
 	$(Q)$(CC) -c $(CFLAGS) -o $(goal) $(addprefix -I ,$(inc-y)) $(addprefix -D,$(def-y)) $(abspath $<)
+# run lint if enabled
+	$(run_pclint)
+	$(run_splint)
 
 # Assembler
 
@@ -183,7 +227,7 @@ ifeq ($(CROSS_COMPILE),)
 	$(Q)$(CC) $(LDFLAGS) -o $@ $(libpath-y) $(obj-y) $(lib-y) $(libitem-y)	
 else	
 	$(Q)$(LD) $(LDFLAGS) -T $(ldcmdfile-y) -o $@ $(libpath-y) --start-group $(obj-y) $(lib-y) $(libitem-y) --end-group $(LDMAPFILE)
-ifdef CFG_HC1X
+ifdef CFG_MC912DG128A
 	@$(CROSS_COMPILE)objdump -h $@ | gawk -f $(ROOTDIR)/scripts/hc1x_memory.awk
 else
 	@echo "Image size: (decimal)"

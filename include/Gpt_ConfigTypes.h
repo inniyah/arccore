@@ -13,18 +13,17 @@
  * for more details.
  * -------------------------------- Arctic Core ------------------------------*/
 
+#ifndef GPT_CONFIGTYPES_H
+#define GPT_CONFIGTYPES_H
 
+typedef struct  {
+	uint32 GptChannelClkSrc;
+	Gpt_ChannelType GptChannelId;
+	Gpt_ChannelMode GptChannelMode;
+	void (*GptNotification)();
+	uint8 GptNotificationPriority;
+	uint32 GptChannelPrescale;
+	boolean GptEnableWakeup;
+} Gpt_ConfigType;
 
-
-
-
-
-
-#ifndef COM_TESTDATA_H_
-#define COM_TESTDATA_H_
-
-extern Com_ConfigType ComConfig_TEST;
-
-extern const PduR_PBConfigType PduRConfigData_TEST[];
-
-#endif /* COM_TESTDATA_H_ */
+#endif /* GPT_CONFIGTYPES_H */
