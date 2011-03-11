@@ -25,7 +25,7 @@ CFG+=STM32_MD
 # What buildable modules does this board have, 
 # default or private
 
-MOD_AVAIL+=ADC CAN DIO MCU FLS PORT PWM GPT     
+MOD_AVAIL+=ADC CAN DIO MCU FLS PORT PWM GPT WDG    
 # System + Communication + Diagnostic
 MOD_AVAIL+=CANIF CANTP COM DCM DEM DET ECUM IOHWAB KERNEL PDUR WDGM RTE
 # Additional
@@ -40,4 +40,9 @@ def-y += HEAPSIZE=3000
 # Select the right device in ST header files.
 # [ STM32F10X_LD | STM32F10X_MD |  STM32F10X_HD |STM32F10X_CL ]
 def-y += STM32F10X_MD
+
+
+# Default cross compiler
+DEFAULT_CROSS_COMPILE = /opt/arm-none-eabi/bin/arm-none-eabi-
+
 

@@ -81,11 +81,18 @@
 #if defined(USE_LINSM)
 #include "LinSM.h"
 #endif
+#if defined(USE_WDG)
+#include "Wdg.h"
+#endif
+#if defined(USE_WDGM)
+#include "WdgM.h"
+#endif
+
 
 void EcuM_AL_DriverInitZero(void)
 {
-	Det_Init();
-    Det_Start();
+	Det_Init();/** @req EcuM2783 */
+    Det_Start();/** @req EcuM2634 */
 }
 
 EcuM_ConfigType* EcuM_DeterminePbConfiguration(void)
@@ -127,7 +134,13 @@ void EcuM_AL_DriverInitOne(const EcuM_ConfigType *ConfigPtr)
 #endif
 
 	// Setup watchdog
-	// TODO
+	#if defined(USE_WDG)
+	Wdg_Init(ConfigPtr->WdgConfig);
+#endif
+#if defined(USE_WDGM)
+	WdgM_Init(ConfigPtr->WdgMConfig);
+#endif
+
 
 #if defined(USE_DMA)
 	// Setup DMA

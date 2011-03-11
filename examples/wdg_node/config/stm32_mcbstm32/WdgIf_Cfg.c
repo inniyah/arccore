@@ -13,18 +13,29 @@
  * for more details.
  * -------------------------------- Arctic Core ------------------------------*/
 
+#include "WdgIf.h"
+#include "Wdg.h"
 
+const WdgIf_DeviceType WdgIfDevice[] =
+{
+  {
+    .WdgIf_DeviceIndex = 0,
+    .WdgRef = &WdgWWDGGeneral,
+  },
+  {
+	.WdgIf_DeviceIndex = 1,
+	.WdgRef = &WdgIWDGGeneral,
+  },
+};
 
+const WdgIf_GeneralType WdgIfGeneral =
+{
+  .WdgIf_NumberOfDevices = sizeof(WdgIfDevice)/sizeof(WdgIfDevice[0]),
+};
 
+const WdgIf_ConfigType WdgIfConfig =
+{
+  .WdgIf_General = &WdgIfGeneral,
+  .WdgIf_Device = WdgIfDevice,
+};
 
-
-
-
-#include "WdgM_Cfg.h"
-
-Std_ReturnType WdgM_UpdateAliveCounter (WdgM_SupervisedEntityIdType SEid);
-Std_ReturnType WdgM_ActivateAliveSupervision (WdgM_SupervisedEntityIdType SEid);
-Std_ReturnType WdgM_DeactivateAliveSupervision (WdgM_SupervisedEntityIdType SEid);
-void WdgM_Init(const WdgM_ConfigType* ConfigPtr);
-void WdgM_MainFunction_AliveSupervision (void);
-void WdgM_MainFunction_Trigger (void);
