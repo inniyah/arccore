@@ -19,11 +19,12 @@
 #include "Modules.h"
 #include <string.h>
 #include <Os.h>
+#include "isr.h"
 #include "EcuM_Internals.h"
 #include "EcuM_Cbk.h"
 #include "Mcu.h"
 #include "Det.h"
-#include "irq.h"
+#include "isr.h"
 #if defined(USE_NVM)
 #include "Nvm.h"
 #endif
@@ -44,8 +45,8 @@ void EcuM_Init( void )
 	// Initialize the OS
 	InitOS();
 
-	// Enable interrupts
-	Irq_Init();
+	// Setup interrupts
+	Os_IsrInit();
 
 	// Determine PostBuild configuration
 	internal_data.config = EcuM_DeterminePbConfiguration();

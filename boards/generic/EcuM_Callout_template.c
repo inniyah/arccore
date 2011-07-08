@@ -81,13 +81,15 @@
 #if defined(USE_LINSM)
 #include "LinSM.h"
 #endif
+#if defined(USE_SPI)
+#include "Spi.h"
+#endif
 #if defined(USE_WDG)
 #include "Wdg.h"
 #endif
 #if defined(USE_WDGM)
 #include "WdgM.h"
 #endif
-
 
 void EcuM_AL_DriverInitZero(void)
 {
@@ -102,6 +104,7 @@ EcuM_ConfigType* EcuM_DeterminePbConfiguration(void)
 
 void EcuM_AL_DriverInitOne(const EcuM_ConfigType *ConfigPtr)
 {
+	(void)ConfigPtr;
   //lint --e{715}       PC-Lint (715) - ConfigPtr usage depends on configuration of modules
 #if defined(USE_MCU)
 	Mcu_Init(ConfigPtr->McuConfig);
@@ -134,7 +137,7 @@ void EcuM_AL_DriverInitOne(const EcuM_ConfigType *ConfigPtr)
 #endif
 
 	// Setup watchdog
-	#if defined(USE_WDG)
+#if defined(USE_WDG)
 	Wdg_Init(ConfigPtr->WdgConfig);
 #endif
 #if defined(USE_WDGM)
@@ -164,6 +167,7 @@ void EcuM_AL_DriverInitOne(const EcuM_ConfigType *ConfigPtr)
 
 void EcuM_AL_DriverInitTwo(const EcuM_ConfigType* ConfigPtr)
 {
+	(void)ConfigPtr;
   //lint --e{715}       PC-Lint (715) - ConfigPtr usage depends on configuration of modules
 
 #if defined(USE_SPI)
@@ -173,7 +177,7 @@ void EcuM_AL_DriverInitTwo(const EcuM_ConfigType* ConfigPtr)
 
 #if defined(USE_EEP)
 	// Setup EEP
-	Eep_Init(ConfigPtr->EEpConfig);
+	Eep_Init(ConfigPtr->EepConfig);
 #endif
 
 #if defined(USE_FLS)
@@ -188,7 +192,7 @@ void EcuM_AL_DriverInitTwo(const EcuM_ConfigType* ConfigPtr)
 
 #if defined(USE_EA)
 	// Setup EA
-	Ea_init();
+	Ea_Init();
 #endif
 
 #if defined(USE_NVM)
@@ -255,6 +259,7 @@ void EcuM_AL_DriverInitTwo(const EcuM_ConfigType* ConfigPtr)
 
 void EcuM_AL_DriverInitThree(const EcuM_ConfigType* ConfigPtr)
 {
+	(void)ConfigPtr;
   //lint --e{715}       PC-Lint (715) - ConfigPtr usage depends on configuration of modules
 
 #if defined(USE_DEM)

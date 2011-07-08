@@ -3,7 +3,6 @@ _BOARD_COMMON_MK:=y  # Include guard for backwards compatability
 
 obj-$(CFG_PPC) += crt0.o
 obj-$(CFG_HC1X) += crt0.o
-
 vpath-$(CFG_ARM_CM3) += $(ROOTDIR)/$(ARCH_PATH-y)/kernel
 vpath-$(CFG_ARM_CM3) += $(ROOTDIR)/$(ARCH_PATH-y)/drivers/STM32F10x_StdPeriph_Driver/src
 vpath-$(CFG_ARM_CM3) += $(ROOTDIR)/$(ARCH_PATH-y)/drivers/STM32_ETH_Driver/src
@@ -41,6 +40,11 @@ obj-$(USE_ECUM) += EcuM_Callout_template.o
 inc-$(USE_ECUM) += $(ROOTDIR)/system/EcuM
 vpath-$(USE_ECUM) += $(ROOTDIR)/system/EcuM
 
+#Ea
+obj-$(USE_EA) += Ea.o
+obj-$(USE_EA) += Ea_Lcfg.o
+vpath-$(USE_EA) += $(ROOTDIR)/memory/Ea
+
 # Gpt
 obj-$(USE_GPT) += Gpt.o
 obj-$(USE_GPT) += Gpt_Cfg.o
@@ -58,7 +62,11 @@ obj-$(USE_MCU) += Mcu_Cfg.o
 # Flash
 obj-$(USE_FLS) += Fls.o
 obj-$(USE_FLS) += Fls_Cfg.o
+ifeq ($(CFG_MPC5606S),y)
+obj-$(CFG_MPC55XX)-$(USE_FLS) += Fls_C90FL.o
+else
 obj-$(CFG_MPC55XX)-$(USE_FLS) += Fls_H7F.o
+endif
 
 # Bring in the freescale driver source  
 inc-$(CFG_MPC55XX) +=  $(ROOTDIR)/$(ARCH_PATH-y)/delivery/mpc5500_h7f/include
@@ -113,7 +121,7 @@ vpath-$(USE_FEE) += $(ROOTDIR)/memory/Fee
 #Eep
 obj-$(USE_EEP) += Eep.o
 obj-$(USE_EEP) += Eep_Lcfg.o
-obj-$(USE_EEP) += Eeprom_Lcfg.o
+#obj-$(USE_EEP) += Eeprom_Lcfg.o
 
 #Fls ext
 obj-$(USE_FLS_SST25XX) += Fls_SST25xx.o
@@ -125,8 +133,8 @@ obj-$(USE_WDG) += Wdg.o
 obj-$(USE_WDG) += Wdg_Lcfg.o
 
 #WdgIf
-obj-$(USE_WDG) += WdgIf.o
-obj-$(USE_WDG) += WdgIf_Cfg.o
+obj-$(USE_WDGIF) += WdgIf.o
+obj-$(USE_WDGIF) += WdgIf_Cfg.o
 inc-y += $(ROOTDIR)/system/WdgIf
 vpath-y += $(ROOTDIR)/system/WdgIf
 
@@ -196,12 +204,14 @@ vpath-$(USE_COM) += $(ROOTDIR)/communication/Com
 
 # PduR
 obj-$(USE_PDUR) += PduR_Com.o
-obj-$(USE_PDUR) += PduR_If.o
+obj-$(USE_PDUR) += PduR_Logic.o
 obj-$(USE_PDUR) += PduR_LinIf.o
 obj-$(USE_PDUR) += PduR_PbCfg.o
 obj-$(USE_PDUR) += PduR_CanIf.o
 obj-$(USE_PDUR) += PduR_CanTp.o
 obj-$(USE_PDUR) += PduR_Dcm.o
+obj-$(USE_PDUR) += PduR_SoAd.o
+obj-$(USE_PDUR) += PduR_Routing.o
 obj-$(USE_PDUR) += PduR.o
 inc-$(USE_PDUR) += $(ROOTDIR)/communication/PduR
 inc-$(USE_COM) += $(ROOTDIR)/communication/PduR
@@ -242,15 +252,24 @@ vpath-$(USE_TCF) += $(ROOTDIR)/common/tcf
 #SLEEP
 obj-$(USE_SLEEP) += sleep.o
 
-obj-y += xtoa.o
+
+
+ifeq ($(COMPILER),cw)
+SELECT_CLIB?=CLIB_CW
+endif
 
 SELECT_CLIB?=CLIB_NEWLIB
 
-ifeq ($(SELECT_CLIB),CLIB_CW)
+ifeq ($(SELECT_CLIB),CLIB_NATIVE)
+  # Just use native clib 
+  
+else ifeq ($(SELECT_CLIB),CLIB_CW)
   # This is not good, but don't know what to do right now....
+  obj-y += xtoa.o
   obj-y += msl_port.o
 else
   # Newlib
+  obj-y += xtoa.o
   obj-y += newlib_port.o
   # If we have configured console output we include printf. 
   # Overridden to use lib implementation with CFG_NEWLIB_PRINTF
@@ -275,8 +294,8 @@ vpath-y += $(ROOTDIR)/diagnostic/Det
 
 # include files need by us
 inc-y += $(ROOTDIR)/include
-inc-y += $(ROOTDIR)/kernel/test
-inc-y += $(ROOTDIR)/kernel/include
+inc-y += $(ROOTDIR)/system/kernel/test
+inc-y += $(ROOTDIR)/system/kernel/include
 inc-y += $(ROOTDIR)/$(ARCH_PATH-y)/kernel
 inc-y += $(ROOTDIR)/$(ARCH_PATH-y)/drivers
 inc-y += $(ROOTDIR)/boards/$(BOARDDIR)/config

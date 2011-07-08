@@ -29,6 +29,7 @@
 #include "debug.h"
 #include "PduR.h"
 #include "Det.h"
+#include "McuExtensions.h"
 
 
 uint8 Com_SendSignal(Com_SignalIdType SignalId, const void *SignalDataPtr) {
@@ -72,7 +73,7 @@ uint8 Com_ReceiveSignal(Com_SignalIdType SignalId, void* SignalDataPtr) {
 	return E_OK;
 }
 
-Std_ReturnType Com_TriggerTransmit(PduIdType ComTxPduId, uint8 *SduPtr) {
+Std_ReturnType Com_TriggerTransmit(PduIdType ComTxPduId, PduInfoType *PduInfoPtr) {
 	PDU_ID_CHECK(ComTxPduId, 0x13, E_NOT_OK);
 	/*
 	 * COM260: This function must not check the transmission mode of the I-PDU
@@ -85,7 +86,8 @@ Std_ReturnType Com_TriggerTransmit(PduIdType ComTxPduId, uint8 *SduPtr) {
 	const ComIPdu_type *IPdu = GET_IPdu(ComTxPduId);
 	Com_Arc_IPdu_type *Arc_IPdu = GET_ArcIPdu(ComTxPduId);
 
-	memcpy(SduPtr, Arc_IPdu->ComIPduDataPtr, IPdu->ComIPduSize);
+	memcpy(PduInfoPtr->SduDataPtr, Arc_IPdu->ComIPduDataPtr, IPdu->ComIPduSize);
+	PduInfoPtr->SduLength = IPdu->ComIPduSize;
 	return E_OK;
 }
 
@@ -94,46 +96,38 @@ Std_ReturnType Com_TriggerTransmit(PduIdType ComTxPduId, uint8 *SduPtr) {
 void Com_TriggerIPduSend(PduIdType ComTxPduId) {
 	PDU_ID_CHECK(ComTxPduId, 0x17);
 
-	//DEBUG(DEBUG_MEDIUM, "Com_TriggerIPduSend sending IPdu %d... ", ComTxPduId);
 	const ComIPdu_type *IPdu = GET_IPdu(ComTxPduId);
 	Com_Arc_IPdu_type *Arc_IPdu = GET_ArcIPdu(ComTxPduId);
 
 	// Is the IPdu ready for transmission?
 	if (Arc_IPdu->Com_Arc_TxIPduTimers.ComTxIPduMinimumDelayTimer == 0) {
-		//DEBUG(DEBUG_MEDIUM, "success!\n", ComTxPduId);
 
-		/*
-		PduInfoType PduInfoPackage = {
-			.SduDataPtr = malloc(IPdu->ComIPduSize),
-			.SduLength = ComConfig->ComIPdu[ComTxPduId].ComIPduSize
-		};
-		memcpy((void *)PduInfoPackage.SduDataPtr, Arc_IPdu->ComIPduDataPtr, IPdu->ComIPduSize);
-		*/
-
-		Com_Arc_Config.OutgoingPdu.SduLength = ComConfig->ComIPdu[ComTxPduId].ComIPduSize;
-		memcpy((void *)Com_Arc_Config.OutgoingPdu.SduDataPtr, Arc_IPdu->ComIPduDataPtr, IPdu->ComIPduSize);
+		imask_t mask = McuE_EnterCriticalSection();
 		// Check callout status
 		if (IPdu->ComIPduCallout != NULL) {
 			if (!IPdu->ComIPduCallout(ComTxPduId, Arc_IPdu->ComIPduDataPtr)) {
 				// TODO Report error to DET.
 				// Det_ReportError();
+				McuE_ExitCriticalSection(mask);
 				return;
 			}
 		}
 
+		PduInfoType PduInfoPackage = {
+			.SduDataPtr = Arc_IPdu->ComIPduDataPtr,
+			.SduLength = IPdu->ComIPduSize
+		};
+
 		// Send IPdu!
-		if (PduR_ComTransmit(IPdu->ArcIPduOutgoingId, &Com_Arc_Config.OutgoingPdu) == E_OK) {
+		if (PduR_ComTransmit(IPdu->ArcIPduOutgoingId, &PduInfoPackage) == E_OK) {
 			// Clear all update bits for the contained signals
 			for (uint8 i = 0; (IPdu->ComIPduSignalRef != NULL) && (IPdu->ComIPduSignalRef[i] != NULL); i++) {
-			//for (int i = 0; i < Arc_IPdu->NComIPduSignalRef; i++) {
 				if (IPdu->ComIPduSignalRef[i]->ComSignalArcUseUpdateBit) {
 					CLEARBIT(Arc_IPdu->ComIPduDataPtr, IPdu->ComIPduSignalRef[i]->ComUpdateBitPosition);
 				}
 			}
 		}
-		// Free allocted memory.
-		// TODO: Is this the best way to solve this memory problem?
-		//free(PduInfoPackage.SduDataPtr);
+		McuE_ExitCriticalSection(mask);
 
 		// Reset miminum delay timer.
 		Arc_IPdu->Com_Arc_TxIPduTimers.ComTxIPduMinimumDelayTimer = IPdu->ComTxIPdu.ComTxIPduMinimumDelayFactor;
@@ -144,7 +138,7 @@ void Com_TriggerIPduSend(PduIdType ComTxPduId) {
 }
 
 //lint -esym(904, Com_RxIndication) //PC-Lint Exception of rule 14.7
-void Com_RxIndication(PduIdType ComRxPduId, const uint8* SduPtr) {
+void Com_RxIndication(PduIdType ComRxPduId, const PduInfoType* PduInfoPtr) {
 	PDU_ID_CHECK(ComRxPduId, 0x14);
 
 	const ComIPdu_type *IPdu = GET_IPdu(ComRxPduId);
@@ -157,7 +151,7 @@ void Com_RxIndication(PduIdType ComRxPduId, const uint8* SduPtr) {
 
 	// Check callout status
 	if (IPdu->ComIPduCallout != NULL) {
-		if (!IPdu->ComIPduCallout(ComRxPduId, SduPtr)) {
+		if (!IPdu->ComIPduCallout(ComRxPduId, PduInfoPtr->SduDataPtr)) {
 			// TODO Report error to DET.
 			// Det_ReportError();
 			return;
@@ -165,7 +159,7 @@ void Com_RxIndication(PduIdType ComRxPduId, const uint8* SduPtr) {
 	}
 
 	// Copy IPDU data
-	memcpy(Arc_IPdu->ComIPduDataPtr, SduPtr, IPdu->ComIPduSize);
+	memcpy(Arc_IPdu->ComIPduDataPtr, PduInfoPtr->SduDataPtr, IPdu->ComIPduSize);
 
 	// For each signal.
 	const ComSignal_type *comSignal;
@@ -261,9 +255,10 @@ Std_ReturnType Com_ReceiveSignalGroup(Com_SignalGroupIdType SignalGroupId) {
 
 void Com_UpdateShadowSignal(Com_SignalIdType SignalId, const void *SignalDataPtr) {
 	Com_Arc_GroupSignal_type *Arc_GroupSignal = GET_ArcGroupSignal(SignalId);
+
 	// TODO: CopyData
 	// Com_CopyData(Arc_GroupSignal->Com_Arc_ShadowBuffer, SignalDataPtr, GroupSignal->ComBitSize, GroupSignal->ComBitPosition, 0);
-	Com_WriteSignalDataToPduBuffer(SignalId, TRUE, SignalDataPtr, (void *)Arc_GroupSignal->Com_Arc_ShadowBuffer);
+	Com_WriteSignalDataToPduBuffer(SignalId, TRUE, SignalDataPtr, (void *)Arc_GroupSignal->Com_Arc_ShadowBuffer, 8);
 }
 
 void Com_ReceiveShadowSignal(Com_SignalIdType SignalId, void *SignalDataPtr) {

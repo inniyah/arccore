@@ -1,14 +1,34 @@
 
 MEMORY
 {
-    flash: org = 0x00000000,   len = 0x00060000 
-    sram:  org = 0x40000000,   len = 0x00008000 
+    flash: org = 0x00000000,   len = 0x00100000 
+    sram:  org = 0x40000000,   len = 0x0000c000 
 }
 
 SECTIONS
 {
    GROUP : {
-      .rcw : { *(.rcw) }
+      .rcw : { }      
+      .exception_tbl (VLECODE) : {}
+#if defined(CFG_VLE)
+       .text_vle (VLECODE) ALIGN(0x1000): {
+             *(.text)
+             *(.text_vle)
+             *(.fini)
+             *(.eini)
+         }
+       .init  : {}
+       .init_vle (VLECODE) : {
+             *(.init)
+             *(.init_vle)
+          }
+        .ctors : {}
+        .dtors : {}
+        .rodata (CONST) : {
+            *(.rdata)
+            *(.rodata)
+         }
+#else       
       .text : { 
       		 *(.exception_tbl)
              *(.text)
@@ -19,15 +39,19 @@ SECTIONS
              *(.fini) 		
              *(.eini)
              . = (.+15);
-        } 
-	    .sdata2       : {}  /* really PPC.EMB.sdata2?, r2 should point here */
+        }
+#endif
 	    extab      : {}  
 	    extabindex : {}
-	    . = ALIGN(0x10);
+        .sdata2     : {}   /* SHF_ALLOC + possibly SHF_WRITE (prob. ReadOnly)*/
+        .sbss2      : {}   /* SHF_ALLOC +  SHF_WRITE , e.g const int apa = 0;*/
+	    . = ALIGN(0x10);   /* Section alignment is 0x10 */ 	
 	    __DATA_ROM = .;
 	    .=.+SIZEOF(.data);
+	    . = ALIGN(0x10);  /* Section alignment is 0x10 */
 	    __SDATA = .;
 	    .=.+SIZEOF(.sdata);
+	    . = ALIGN(0x10);  /* Section alignment is 0x10 */
 	    __SDATA0 = .;
 	    .=.+SIZEOF(.PPC.EMB.sdata0);
 	 }	 > flash
@@ -41,15 +65,16 @@ SECTIONS
 	
 	GROUP : {
 	  __BSS_START = .;
-	  .sbss  (BSS)  : {}  	/* sbss - un-initialized small data */									
-	  .bss   (BSS)  : {}  
+	  .sbss    : {}  	/* sbss - un-initialized small data */									
+	  .bss    : {}  
 	  __BSS_END = .;
       .PPC.EMB.sdata0 LOAD(ADDR(__SDATA0)) : {}	/* Small data with offset to 0 */	    
       .PPC.EMB.sbss0  : {}
-      .ramlog (DATA) : { *(.ramlog) }
+      .ramlog : { *(.ramlog_data) *(.ramlog_bss) }
 	  _heap_addr = .;      
 	} > sram
 }   
 
 _heap_end   = ADDR(sram)+SIZEOF(sram);
+_heap_size  = _heap_end - _heap_addr;
 __SP_INIT = _heap_end;

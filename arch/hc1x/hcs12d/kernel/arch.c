@@ -15,6 +15,8 @@
 
 #include "internal.h"
 #include "context.h"
+#include "isr.h"
+#include "sys.h"
 
 /**
  * Function make sure that we switch to supervisor mode(rfi) before
@@ -25,7 +27,7 @@ void Os_ArchFirstCall( void )
 {
 	// TODO: make switch here... for now just call func.
 	Irq_Enable();
-	os_sys.curr_pcb->entry();
+	Os_Sys.currTaskPtr->constPtr->entry();
 }
 
 void *Os_ArchGetStackPtr( void ) {
@@ -42,7 +44,7 @@ unsigned int Os_ArchGetScSize( void ) {
 }
 
 
-void Os_ArchSetupContext( OsPcbType *pcb ) {
+void Os_ArchSetupContext( OsTaskVarType *pcb ) {
   // Nothing to be done here
 }
 
@@ -51,7 +53,7 @@ void Os_ArchSetupContext( OsPcbType *pcb ) {
  * @param pcbPtr
  */
 
-void Os_ArchSetTaskEntry(OsPcbType *pcbPtr ) {
+void Os_ArchSetTaskEntry(OsTaskVarType *pcbPtr ) {
 	uint8_t *context_bytes = (uint8_t *)pcbPtr->stack.curr;
 	uint16_t temp;
 
@@ -59,11 +61,11 @@ void Os_ArchSetTaskEntry(OsPcbType *pcbPtr ) {
 
 	context_bytes[8] = OS_KERNEL_CODE_PPAGE;
 
-	if( pcbPtr->proc_type == PROC_EXTENDED ) {
+	if( pcbPtr->constPtr->proc_type == PROC_EXTENDED ) {
 		temp = (uint16_t)Os_TaskStartExtended;
 		context_bytes[HIGH_BYTE_RETURN_ADRESS] = temp >> 8;
 		context_bytes[LOW_BYTE_RETURN_ADRESS] = temp & 0xFF;
-	} else if( pcbPtr->proc_type == PROC_BASIC ) {
+	} else if( pcbPtr->constPtr->proc_type == PROC_BASIC ) {
 		temp = (uint16_t)Os_TaskStartBasic;
 		context_bytes[HIGH_BYTE_RETURN_ADRESS] = temp >> 8;
 		context_bytes[LOW_BYTE_RETURN_ADRESS] = temp & 0xFF;

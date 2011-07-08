@@ -20,8 +20,6 @@
 
 
 
-#warning "This default file may only be used as an example!"
-
 #include "Dma.h"
 
 const Dma_MuxConfigType DmaMuxConfig [DMA_NUMBER_OF_CHANNELS] =
@@ -83,7 +81,13 @@ const Dma_ChannelConfigType DmaChannelConfig [DMA_NUMBER_OF_CHANNELS] =
 
 const Dma_ConfigType DmaConfig []=
 {
-  {DmaMuxConfig, DmaChannelConfig, DMA_FIXED_PRIORITY_ARBITRATION}
+  {
+#if defined(CFG_MPC5516) || defined(CFG_MPC5517) || defined(CFG_MPC5606S)
+    DmaMuxConfig,
+#endif
+  	DmaChannelConfig,
+  	DMA_FIXED_PRIORITY_ARBITRATION
+  }
 };
 
 

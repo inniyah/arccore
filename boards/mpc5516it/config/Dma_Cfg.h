@@ -20,12 +20,9 @@
 
 
 
-#warning "This default file may only be used as an example!"
-
 #ifndef DMA_CFG_H_
 #define DMA_CFG_H_
 
-/** Channel id's. HW specific. */
 typedef enum
 {
   DMA_ADC_GROUP0_RESULT_CHANNEL,
@@ -46,7 +43,5 @@ typedef enum
   DMA_CHANNEL15,*/
   DMA_NUMBER_OF_CHANNELS
 } Dma_ChannelType;
-
-
 
 #endif /* DMA_CFG_H_ */

@@ -13,12 +13,30 @@ include $(ROOTDIR)/boards/$(BOARDDIR)/build_config.mk
 # Perform build system version check
 include $(ROOTDIR)/scripts/version_check.mk
 
+COMPILER?=gcc
+ifeq (${COMPILER},gcc)
+# Assume that the board have set DEFAULT_CROSS_COMPILE
+CROSS_COMPILE?=${DEFAULT_CROSS_COMPILE}
+endif
+
+ifeq (${COMPILER},cw)
+CW_COMPILE?=${DEFAULT_CW_COMPILE}
+endif
+
 # Check cross compiler setting against default from board config
+ifeq (${COMPILER},cw)
+ifneq (${CW_COMPILE},${DEFAULT_CW_COMPILE})
+${warning Not using default cross compiler for architecture.}
+${warning CROSS_COMPILE:         ${CW_COMPILE} [${origin CW_COMPILE}]}
+${warning DEFAULT_CROSS_COMPILE: ${DEFAULT_CW_COMPILE} [${origin DEFAULT_CW_COMPILE}]}
+endif
+else
 ifneq (${DEFAULT_CROSS_COMPILE},)
 ifneq (${CROSS_COMPILE},${DEFAULT_CROSS_COMPILE})
 ${warning Not using default cross compiler for architecture.}
 ${warning CROSS_COMPILE:         ${CROSS_COMPILE} [${origin CROSS_COMPILE}]}
 ${warning DEFAULT_CROSS_COMPILE: ${DEFAULT_CROSS_COMPILE} [${origin DEFAULT_CROSS_COMPILE}]}
+endif
 endif
 endif
 
@@ -47,7 +65,7 @@ define CFG_template
 endef
 
 $(foreach mod,$(MOD_AVAIL),$(eval $(call MOD_AVAIL_template,${mod})))
-$(foreach mod,$(MOD_USE),$(eval $(call MOD_USE_template,${mod})))
+$(foreach mod,$(sort $(MOD_USE)),$(eval $(call MOD_USE_template,${mod})))
 $(foreach mod,$(CFG),$(eval $(call CFG_template,${mod})))
 #def-y += $(ARCH) $(ARCH_FAM) $(ARCH_MCU) 
 
@@ -59,7 +77,7 @@ def-y += SELECT_OS_CONSOLE=$(if $(SELECT_OS_CONSOLE),$(SELECT_OS_CONSOLE),TTY_NO
 def-y += SELECT_CONSOLE=$(if $(SELECT_CONSOLE),$(SELECT_CONSOLE),TTY_NONE)
 def-$(USE_DEBUG_PRINTF) += USE_DEBUG_PRINTF 
 
-not_avail = $(filter-out $(MOD_AVAIL),$(MOD_USE))
+not_avail = $(filter-out $(MOD_AVAIL),$(sort $(MOD_USE)))
 ifneq ($(not_avail),)
 $(error Trying to build a module that is not available: $(not_avail))
 endif
@@ -80,7 +98,6 @@ $(eval CFG_$(SELECT_OPT)=y)
 ARCH_PATH-y = arch/$(ARCH_FAM)/$(ARCH)
 
 # Include compiler settings
-COMPILER?=gcc
 include $(ROOTDIR)/scripts/cc_$(COMPILER).mk
 
 # Include pclint or splint settings
@@ -181,23 +198,30 @@ endif
 clean: FORCE
 	@echo
 	@echo "  >> Cleaning $(CURDIR)"
-	$(Q)-rm -f *.o *.d *.h *.elf *.a *.ldp *.tmp *.s *.c *.map
+	$(Q)-rm -f *.o *.d *.h *.elf *.a *.ldp *.lcf *.tmp *.s *.c *.map *.out
 	@echo
-
-.PHONY config: 
+	
+.PHONY : config 
 config: FORCE
-	@echo "board   modules:" $(MOD_AVAIL)
-	@echo "enabled modules:" $(MOD_USE)
+	@echo ">>>> Available modules:" $(sort $(MOD_AVAIL))
+	@echo ">>>> Used modules:     " $(sort $(MOD_USE)) 
 	@echo $(MOD) ${def-y}
+
+.PHONY : module_config
+module_config: FORCE
+	@echo ">>>> Available modules:" $(sort $(MOD_AVAIL))
+	@echo ">>>> Used modules:     " $(sort $(MOD_USE)) 
+
 
 FORCE:
 
-$(ROOTDIR)/binaries:
+$(ROOTDIR)/binaries/$(BOARDDIR):
 	@mkdir -p $@
 
 .PHONY all:
-all: $(build-exe-y) $(build-hex-y) $(build-lib-y) $(build-bin-y) $(ROOTDIR)/binaries
-	@cp -v $(build-lib-y) $(build-exe-y) $(build-hex-y) $(build-bin-y) $(ROOTDIR)/binaries
+all: module_config $(build-exe-y) $(build-hex-y) $(build-lib-y) $(build-bin-y) $(ROOTDIR)/binaries/$(BOARDDIR)
+	$(Q)cp -v $(build-lib-y) $(build-exe-y) $(build-hex-y) $(build-bin-y) $(ROOTDIR)/binaries/$(BOARDDIR)
+	
 
 
 .SUFFIXES:
@@ -229,7 +253,8 @@ all: $(build-exe-y) $(build-hex-y) $(build-lib-y) $(build-bin-y) $(ROOTDIR)/bina
 	$(Q)$(AS) $(ASFLAGS) -o $(goal) $<
 	
 # PP Assembler	
-#.SECONDARY %.s:
+
+.SECONDARY %.s: # Don't remove *.s files (needed for debugging)
 
 %.s: %.sx
 	@echo
@@ -239,8 +264,10 @@ all: $(build-exe-y) $(build-hex-y) $(build-lib-y) $(build-bin-y) $(ROOTDIR)/bina
 # Board linker files are in the board directory 
 inc-y += $(ROOTDIR)/boards/$(BOARDDIR)
 
+
+# *.ldf (file on disc) -> *.lcf (preprocessed *.ldf file)
 # Preprocess linker files..
-%.ldp %.lcf: %.ldf
+%.lcf %.ldp: %.ldf
 	@echo
 	@echo "  >> CPP $(notdir $<)"
 	$(Q)$(CPP) -E -P $(CPP_ASM_FLAGS) -o $@ $(addprefix -I,$(inc-y)) $(addprefix -D,$(def-y)) $<
@@ -273,11 +300,11 @@ $(build-bin-y): $(build-exe-y)
 $(build-exe-y): $(dep-y) $(obj-y) $(sim-y) $(libitem-y) $(ldcmdfile-y)
 	@echo
 	@echo "  >> LD $@"
-ifeq ($(CROSS_COMPILE),)
+ifeq ($(CROSS_COMPILE)$(COMPILER),gcc)
 	$(Q)$(CC) $(LDFLAGS) -o $@ $(libpath-y) $(obj-y) $(lib-y) $(libitem-y)	
 else
 	$(Q)$(LD) $(LDFLAGS) $(LD_FILE) $(ldcmdfile-y) -o $@ $(libpath-y) $(LD_START_GRP) $(obj-y) $(lib-y) $(libitem-y) $(LD_END_GRP) $(LDMAPFILE)
- ifdef CFG_MC912DG128A
+ ifdef CFG_HC1X
     # Print memory layout
 	@$(CROSS_COMPILE)objdump -h $@ | gawk -f $(ROOTDIR)/scripts/hc1x_memory.awk
  else

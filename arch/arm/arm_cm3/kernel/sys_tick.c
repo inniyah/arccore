@@ -16,17 +16,16 @@
 #include "Os.h"
 #include "internal.h"
 #include "stm32f10x.h"
-#include "irq.h"
+#include "isr.h"
 #include "arc.h"
+#include "counter_i.h"
 
 
 /**
  * Init of free running timer.
  */
 void Os_SysTickInit( void ) {
-	TaskType tid;
-	tid = Os_Arc_CreateIsr(OsTick,6/*prio*/,"OsTick");
-	Irq_AttachIsr2(tid,NULL, SysTick_IRQn);
+	ISR_INSTALL_ISR2("OsTick", OsTick, SysTick_IRQn, 6, 0);
 }
 
 /**
@@ -48,8 +47,7 @@ void Os_SysTickStart(uint32_t period_ticks) {
 	// SysTick interrupt each 250ms with counter clock equal to 9MHz
 	if (SysTick_Config((SystemFrequency / 8) / 4)) {
 		// Capture error
-		while (1)
-			;
+		while (1) ;
 	}
 
 	// Select HCLK/8 as SysTick clock source

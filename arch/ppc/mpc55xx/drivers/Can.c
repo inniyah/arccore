@@ -14,15 +14,7 @@
  * -------------------------------- Arctic Core ------------------------------*/
 
 
-
-
-
-
-
-
 #include "Can.h"
-
-#ifndef USE_CAN_STUB
 #include "mpc55xx.h"
 #include "Cpu.h"
 #include "Mcu.h"
@@ -34,11 +26,11 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#if defined(USE_KERNEL)
 #include "Os.h"
+#include "isr.h"
 #include "irq.h"
 #include "arc.h"
-#endif
+
 
 
 /* CONFIGURATION NOTES
@@ -137,6 +129,23 @@
 									&CanUnit[_controller]
 
 #define GET_CONTROLLER_CNT() (CAN_CONTROLLER_CNT)
+
+#define INSTALL_HANDLER4(_name, _can_entry, _vector, _priority, _app)\
+	do { \
+		ISR_INSTALL_ISR2(_name, _can_entry, _vector+0, _priority, _app); \
+		ISR_INSTALL_ISR2(_name, _can_entry, _vector+1, _priority, _app); \
+		ISR_INSTALL_ISR2(_name, _can_entry, _vector+2, _priority, _app); \
+		ISR_INSTALL_ISR2(_name, _can_entry, _vector+3, _priority, _app); \
+	} while(0)
+
+#define INSTALL_HANDLER16(_name, _can_entry, _vector, _priority, _app)\
+	do { \
+		INSTALL_HANDLER4(_name, _can_entry, _vector+0, _priority, _app); \
+		INSTALL_HANDLER4(_name, _can_entry, _vector+4, _priority, _app); \
+		INSTALL_HANDLER4(_name, _can_entry, _vector+8, _priority, _app); \
+		INSTALL_HANDLER4(_name, _can_entry, _vector+12,_priority, _app); \
+	} while(0)
+
 
 //-------------------------------------------------------------------
 
@@ -269,39 +278,30 @@ typedef struct {
 
 } Can_UnitType;
 
-#if defined(CFG_MPC5567)
+
 Can_UnitType CanUnit[CAN_CONTROLLER_CNT] =
 {
   {
     .state = CANIF_CS_UNINIT,
   },{
     .state = CANIF_CS_UNINIT,
-  },{
+  },
+#if defined(CFG_MPC5516) || defined(CFG_MPC5517) ||  defined(CFG_MPC5567)
+  {
     .state = CANIF_CS_UNINIT,
   },{
     .state = CANIF_CS_UNINIT,
   },{
     .state = CANIF_CS_UNINIT,
   },
-};
-#else
-Can_UnitType CanUnit[CAN_CONTROLLER_CNT] =
-{
+#endif
+#if defined(CFG_MPC5516) || defined(CFG_MPC5517)
   {
     .state = CANIF_CS_UNINIT,
-  },{
-    .state = CANIF_CS_UNINIT,
-  },{
-    .state = CANIF_CS_UNINIT,
-  },{
-    .state = CANIF_CS_UNINIT,
-  },{
-    .state = CANIF_CS_UNINIT,
-  },{
-    .state = CANIF_CS_UNINIT,
   }
-};
 #endif
+};
+
 
 //-------------------------------------------------------------------
 
@@ -351,31 +351,34 @@ static void Can_BusOff( int unit );
 
 void Can_A_Isr( void  ) {	Can_Isr(CAN_CTRL_A); }
 void Can_B_Isr( void  ) {	Can_Isr(CAN_CTRL_B); }
+#if defined(CFG_MPC5516) || defined(CFG_MPC5517) || defined(CFG_MPC5567)
 void Can_C_Isr( void  ) {	Can_Isr(CAN_CTRL_C); }
 void Can_D_Isr( void  ) {	Can_Isr(CAN_CTRL_D); }
 void Can_E_Isr( void  ) {	Can_Isr(CAN_CTRL_E); }
-#if defined(CFG_MPC5567)
-#else
+#endif
+#if defined(CFG_MPC5516) || defined(CFG_MPC5517)
 void Can_F_Isr( void  ) {	Can_Isr(CAN_CTRL_F); }
 #endif
 
 void Can_A_Err( void  ) {	Can_Err(CAN_CTRL_A); }
 void Can_B_Err( void  ) {	Can_Err(CAN_CTRL_B); }
+#if defined(CFG_MPC5516) || defined(CFG_MPC5517) || defined(CFG_MPC5567)
 void Can_C_Err( void  ) {	Can_Err(CAN_CTRL_C); }
 void Can_D_Err( void  ) {	Can_Err(CAN_CTRL_D); }
 void Can_E_Err( void  ) {	Can_Err(CAN_CTRL_E); }
-#if defined(CFG_MPC5567)
-#else
+#endif
+#if defined(CFG_MPC5516) || defined(CFG_MPC5517)
 void Can_F_Err( void  ) {	Can_Err(CAN_CTRL_F); }
 #endif
 
 void Can_A_BusOff( void  ) {	Can_BusOff(CAN_CTRL_A); }
 void Can_B_BusOff( void  ) {	Can_BusOff(CAN_CTRL_B); }
+#if defined(CFG_MPC5516) || defined(CFG_MPC5517) || defined(CFG_MPC5567)
 void Can_C_BusOff( void  ) {	Can_BusOff(CAN_CTRL_C); }
 void Can_D_BusOff( void  ) {	Can_BusOff(CAN_CTRL_D); }
 void Can_E_BusOff( void  ) {	Can_BusOff(CAN_CTRL_E); }
-#if defined(CFG_MPC5567)
-#else
+#endif
+#if defined(CFG_MPC5516) || defined(CFG_MPC5517)
 void Can_F_BusOff( void  ) {	Can_BusOff(CAN_CTRL_F); }
 #endif
 //-------------------------------------------------------------------
@@ -516,7 +519,7 @@ static void Can_Isr(int unit) {
   if (iFlagLow & canHw->IMRL.R) {
     // Check FIFO
 
-#if defined(CFG_MPC5516) || defined(CFG_MPC5517)
+#if defined(CFG_MPC5516) || defined(CFG_MPC5517) || defined(CFG_MPC5606S)
   	// Note!
   	//   FIFO code NOT tested
     if (canHw->MCR.B.FEN) {
@@ -545,8 +548,10 @@ static void Can_Isr(int unit) {
         // Clear the interrupt
         canHw->IFRL.B.BUF05I = 1;
       }
-    } else {
+    } else
 #endif
+    {
+
       // No FIFO used
       const Can_HardwareObjectType *hohObj;
       uint32 mbMask;
@@ -595,7 +600,7 @@ static void Can_Isr(int unit) {
             canUnit->stats.rxSuccessCnt++;
 
             // unlock MB (dummy read timer)
-            canHw->TIMER.R;
+            (void)canHw->TIMER.R;
 
             // Clear interrupt
             canHw->IFRL.R = (1<<mbNr);
@@ -629,9 +634,7 @@ static void Can_Isr(int unit) {
           }
         }
       } while ( !hohObj->Can_Arc_EOL);
-#if defined(CFG_MPC5516) || defined(CFG_MPC5517)
     } // FIFO code
-#endif
   } else {
     // Note! Over 32 boxes is not implemented
     // Other reasons that we end up here
@@ -666,33 +669,11 @@ static void Can_Isr(int unit) {
 
 //-------------------------------------------------------------------
 
-#if defined(USE_KERNEL)
-#define INSTALL_HANDLERS( _can_name,_boff,_err,_start,_stop) \
-  do { \
-    TaskType tid; \
-    tid = Os_Arc_CreateIsr(_can_name ## _BusOff,2/*prio*/,"Can"); \
-    Irq_AttachIsr2(tid,NULL,_boff); \
-    tid = Os_Arc_CreateIsr(_can_name ## _Err,2/*prio*/,"Can"); \
-    Irq_AttachIsr2(tid,NULL,_err); \
-    for(i=_start;i<=_stop;i++) {  \
-      tid = Os_Arc_CreateIsr(_can_name ## _Isr,2/*prio*/,"Can"); \
-			Irq_AttachIsr2(tid,NULL,i); \
-    } \
-  } while(0);
-#else
-#define INSTALL_HANDLERS( _can_name,_boff,_err,_start,_stop) \
-  Irq_InstallVector(_can_name ## _BusOff, _boff, 1, CPU_Z1); \
-  Irq_InstallVector(_can_name ## _Err, _err, 1, CPU_Z1);    \
-  for(i=_start;i<=_stop;i++) {																\
-    Irq_InstallVector(_can_name ## _Isr, i, 1, CPU_Z1); \
-  }
-#endif
 
 // This initiates ALL can controllers
 void Can_Init( const Can_ConfigType *config ) {
   Can_UnitType *canUnit;
   const Can_ControllerConfigType *canHwConfig;
-  int i;
   uint32 ctlrId;
 
   VALIDATE_NO_RV( (Can_Global.initRun == CAN_UNINIT), 0x0, CAN_E_TRANSITION );
@@ -740,39 +721,65 @@ void Can_Init( const Can_ConfigType *config ) {
     // Note!
     // Could install handlers depending on HW objects to trap more errors
     // in configuration
-#if defined(CFG_MPC5567)
     switch( canHwConfig->CanControllerId ) {
+#if defined(CFG_MPC5606S)
     case CAN_CTRL_A:
-        INSTALL_HANDLERS(Can_A, FLEXCAN_A_ESR_BOFF_INT, FLEXCAN_A_ESR_ERR_INT, FLEXCAN_A_IFLAG1_BUF0I, FLEXCAN_A_IFLAG1_BUF31_16I);	break;
+    	ISR_INSTALL_ISR2(  "Can", Can_A_BusOff, FLEXCAN_0_ESR_BOFF_INT,     2, 0);
+    	ISR_INSTALL_ISR2(  "Can", Can_A_Err,    FLEXCAN_0_ESR_ERR_INT,      2, 0 );
+    	INSTALL_HANDLER4(  "Can", Can_A_Isr,    FLEXCAN_0_BUF_00_03,        2, 0 );  /* 0-3, 4-7, 8-11, 12-15 */
+    	ISR_INSTALL_ISR2(  "Can", Can_A_Isr,    FLEXCAN_0_BUF_16_31,        2, 0 );
+    	ISR_INSTALL_ISR2(  "Can", Can_A_Isr,    FLEXCAN_0_BUF_32_63,        2, 0 );
+    	break;
     case CAN_CTRL_B:
-        INSTALL_HANDLERS(Can_B, FLEXCAN_B_ESR_BOFF_INT, FLEXCAN_B_ESR_ERR_INT, FLEXCAN_B_IFLAG1_BUF0I, FLEXCAN_B_IFLAG1_BUF31_16I);	break;
-    case CAN_CTRL_C:
-        INSTALL_HANDLERS(Can_C, FLEXCAN_C_ESR_BOFF_INT, FLEXCAN_C_ESR_ERR_INT, FLEXCAN_C_IFLAG1_BUF0I, FLEXCAN_C_IFLAG1_BUF31_16I);	break;
-    case CAN_CTRL_D:
-        INSTALL_HANDLERS(Can_D, FLEXCAN_D_ESR_BOFF_INT, FLEXCAN_D_ESR_ERR_INT, FLEXCAN_D_IFLAG1_BUF0I, FLEXCAN_D_IFLAG1_BUF31_16I);	break;
-    case CAN_CTRL_E:
-        INSTALL_HANDLERS(Can_E, FLEXCAN_E_ESR_BOFF_INT, FLEXCAN_E_ESR_ERR_INT, FLEXCAN_E_IFLAG1_BUF0I, FLEXCAN_E_IFLAG1_BUF31_16I);	break;
-    default:
-        assert(0);
-    }
-#else
-    switch( canHwConfig->CanControllerId ) {
-    case CAN_CTRL_A:
-        INSTALL_HANDLERS(Can_A, FLEXCAN_A_ESR_BOFF_INT, FLEXCAN_A_ESR_ERR_INT, FLEXCAN_A_IFLAG1_BUF0I, FLEXCAN_A_IFLAG1_BUF31_16I);	break;
-    case CAN_CTRL_B:
-        INSTALL_HANDLERS(Can_B, FLEXCAN_B_ESR_BOFF_INT, FLEXCAN_B_ESR_ERR_INT, FLEXCAN_B_IFLAG1_BUF0I, FLEXCAN_B_IFLAG1_BUF31_16I);	break;
-    case CAN_CTRL_C:
-        INSTALL_HANDLERS(Can_C, FLEXCAN_C_ESR_BOFF_INT, FLEXCAN_C_ESR_ERR_INT, FLEXCAN_C_IFLAG1_BUF0I, FLEXCAN_C_IFLAG1_BUF31_16I);	break;
-    case CAN_CTRL_D:
-        INSTALL_HANDLERS(Can_D, FLEXCAN_D_ESR_BOFF_INT, FLEXCAN_D_ESR_ERR_INT, FLEXCAN_D_IFLAG1_BUF0I, FLEXCAN_D_IFLAG1_BUF31_16I);	break;
-    case CAN_CTRL_E:
-        INSTALL_HANDLERS(Can_E, FLEXCAN_E_ESR_BOFF_INT, FLEXCAN_E_ESR_ERR_INT, FLEXCAN_E_IFLAG1_BUF0I, FLEXCAN_E_IFLAG1_BUF31_16I);	break;
-    case CAN_CTRL_F:
-        INSTALL_HANDLERS(Can_F, FLEXCAN_F_ESR_BOFF_INT, FLEXCAN_F_ESR_ERR_INT, FLEXCAN_F_IFLAG1_BUF0I, FLEXCAN_F_IFLAG1_BUF31_16I);	break;
-    default:
-        assert(0);
-    }
+    	ISR_INSTALL_ISR2(  "Can", Can_B_BusOff, FLEXCAN_1_ESR_BOFF_INT,     2, 0);
+    	ISR_INSTALL_ISR2(  "Can", Can_B_Err,    FLEXCAN_1_ESR_ERR_INT,      2, 0 );
+    	INSTALL_HANDLER4(  "Can", Can_B_Isr,    FLEXCAN_1_BUF_00_03,        2, 0 );  /* 0-3, 4-7, 8-11, 12-15 */
+    	ISR_INSTALL_ISR2(  "Can", Can_B_Isr,    FLEXCAN_1_BUF_16_31,        2, 0 );
+    	ISR_INSTALL_ISR2(  "Can", Can_B_Isr,    FLEXCAN_1_BUF_32_63,        2, 0 );
+    	break;
+#elif defined(CFG_MPC5516) || defined(CFG_MPC5517) || defined(CFG_MPC5567)
+     case CAN_CTRL_A:
+     	ISR_INSTALL_ISR2(  "Can", Can_A_BusOff, FLEXCAN_A_ESR_BOFF_INT,     2, 0);
+     	ISR_INSTALL_ISR2(  "Can", Can_A_Err,    FLEXCAN_A_ESR_ERR_INT,      2, 0 );
+     	INSTALL_HANDLER16( "Can", Can_A_Isr,    FLEXCAN_A_IFLAG1_BUF0I,     2, 0 );
+     	ISR_INSTALL_ISR2(  "Can", Can_A_Isr,    FLEXCAN_A_IFLAG1_BUF31_16I, 2, 0 );
+     	break;
+     case CAN_CTRL_B:
+     	ISR_INSTALL_ISR2(  "Can", Can_B_BusOff, FLEXCAN_B_ESR_BOFF_INT,     2, 0 );
+     	ISR_INSTALL_ISR2(  "Can", Can_B_Err,    FLEXCAN_B_ESR_ERR_INT,      2, 0 );
+     	INSTALL_HANDLER16( "Can", Can_B_Isr,    FLEXCAN_B_IFLAG1_BUF0I,     2, 0 );
+     	ISR_INSTALL_ISR2(  "Can", Can_B_Isr,    FLEXCAN_B_IFLAG1_BUF31_16I, 2, 0 );
+     	break;
+     case CAN_CTRL_C:
+     	ISR_INSTALL_ISR2(  "Can", Can_C_BusOff, FLEXCAN_C_ESR_BOFF_INT,     2, 0 );
+     	ISR_INSTALL_ISR2(  "Can", Can_C_Err,    FLEXCAN_C_ESR_ERR_INT,      2, 0 );
+     	INSTALL_HANDLER16( "Can", Can_C_Isr,    FLEXCAN_C_IFLAG1_BUF0I,     2, 0 );
+     	ISR_INSTALL_ISR2(  "Can", Can_C_Isr,    FLEXCAN_C_IFLAG1_BUF31_16I, 2, 0 );
+     	break;
+     case CAN_CTRL_D:
+     	ISR_INSTALL_ISR2(  "Can", Can_D_BusOff, FLEXCAN_D_ESR_BOFF_INT,     2, 0 );
+     	ISR_INSTALL_ISR2(  "Can", Can_D_Err,    FLEXCAN_D_ESR_ERR_INT,      2, 0 );
+     	INSTALL_HANDLER16( "Can", Can_D_Isr,    FLEXCAN_D_IFLAG1_BUF0I,     2, 0 );
+     	ISR_INSTALL_ISR2(  "Can", Can_D_Isr,    FLEXCAN_D_IFLAG1_BUF31_16I, 2, 0 );
+     	break;
+     case CAN_CTRL_E:
+     	ISR_INSTALL_ISR2(  "Can", Can_E_BusOff, FLEXCAN_E_ESR_BOFF_INT,     2, 0 );
+     	ISR_INSTALL_ISR2(  "Can", Can_E_Err,    FLEXCAN_E_ESR_ERR_INT,      2, 0 );
+     	INSTALL_HANDLER16( "Can", Can_E_Isr,    FLEXCAN_E_IFLAG1_BUF0I,     2, 0 );
+     	ISR_INSTALL_ISR2(  "Can", Can_E_Isr,    FLEXCAN_E_IFLAG1_BUF31_16I, 2, 0 );
+     	break;
 #endif
+#if defined(CFG_MPC5516) || defined(CFG_MPC5517)
+     case CAN_CTRL_F:
+     	ISR_INSTALL_ISR2(  "Can", Can_F_BusOff, FLEXCAN_F_ESR_BOFF_INT,     2, 0 );
+     	ISR_INSTALL_ISR2(  "Can", Can_F_Err,    FLEXCAN_F_ESR_ERR_INT,      2, 0 );
+     	INSTALL_HANDLER16( "Can", Can_F_Isr,    FLEXCAN_F_IFLAG1_BUF0I,     2, 0 );
+     	ISR_INSTALL_ISR2(  "Can", Can_F_Isr,    FLEXCAN_F_IFLAG1_BUF31_16I, 2, 0 );
+     	break;
+ #endif
+     default:
+         assert(0);
+     }
   }
   return;
 }
@@ -835,14 +842,14 @@ void Can_InitController( uint8 controller, const Can_ControllerConfigType *confi
   // Wait for it to reset
   if( !SIMULATOR() ) {
     // Make a reset so we have a known state
-    canHw->MCR.B.SOFTRST = 1;
-    while( canHw->MCR.B.SOFTRST == 1);
+    //canHw->MCR.B.SOFTRST = 1;  /* commented out for step-in debug mode */
+    //while( canHw->MCR.B.SOFTRST == 1);
     // Freeze to write all mem mapped registers ( see 25.4.8.1 )
     canHw->MCR.B.FRZ = 1;
-    while( canHw->MCR.B.FRZACK == 0);
+    //while( canHw->MCR.B.FRZACK == 0);
   }
 
-#if defined(CFG_MPC5516) || defined(CFG_MPC5517)
+#if defined(CFG_MPC5516) || defined(CFG_MPC5517) || defined(CFG_MPC5606S)
   // Note!
   // FIFO implemenation not tested
   if( config->Can_Arc_Fifo ) {
@@ -881,7 +888,7 @@ void Can_InitController( uint8 controller, const Can_ControllerConfigType *confi
   VALIDATE_DEM_NO_RV(( (tq>8) && (tq<25 )), CAN_E_TIMEOUT );
 
   // Assume we're using the peripheral clock instead of the crystal.
-  clock = McuE_GetPeripheralClock(config->CanCpuClockRef);
+  clock = McuE_GetPeripheralClock( (McuE_PeriperalClock_t) config->CanCpuClockRef );
 
   canHw->CR.B.PRESDIV = clock/(config->CanControllerBaudRate*1000*tq) - 1;
   canHw->CR.B.PROPSEG = config->CanControllerPropSeg;
@@ -891,7 +898,12 @@ void Can_InitController( uint8 controller, const Can_ControllerConfigType *confi
   canHw->CR.B.LPB =	config->Can_Arc_Loopback;
   canHw->CR.B.BOFFREC = 1;  // Disable bus off recovery
 
-#if defined(CFG_MPC5516) || defined(CFG_MPC5517)
+#if defined(CFG_MPC5606S)
+  SIU.PSMI[0].R = 0x00;
+  SIU.PSMI[1].R = 0x00;
+#endif
+
+#if defined(CFG_MPC5516) || defined(CFG_MPC5517) || defined(CFG_MPC5606S)
   // Check if we use individual masks. If so accept anything(=0) for now
   if( canHw->MCR.B.BCC ) {
     i = (config->Can_Arc_Fifo ? 8 : 0 );
@@ -1179,7 +1191,7 @@ Can_ReturnType Can_Write( Can_Arc_HTHType hth, Can_PduType *pduInfo ) {
       canHw->BUF[mbNr].ID.B.STD_ID = pduInfo->id;
     }
 
-#if defined(CFG_MPC5516) || defined(CFG_MPC5517)
+#if defined(CFG_MPC5516) || defined(CFG_MPC5517) || defined(CFG_MPC5606S)
     canHw->BUF[mbNr].ID.B.PRIO = 1; 			// Set Local Priority
 #endif
 
@@ -1237,70 +1249,5 @@ void Can_Arc_GetStatistics( uint8 controller, Can_Arc_StatisticsType *stats)
   *stats = canUnit->stats;
 }
 
-
-
-#else // Stub all functions for use in simulator environment
-
-#include "debug.h"
-
-void Can_Init( const Can_ConfigType *Config )
-{
-  // Do initial configuration of layer here
-}
-
-void Can_InitController( uint8 controller, const Can_ControllerConfigType *config)
-{
-	// Do initialisation of controller here.
-}
-
-Can_ReturnType Can_SetControllerMode( uint8 Controller, Can_StateTransitionType transition )
-{
-	// Turn on off controller here depending on transition
-	return E_OK;
-}
-
-Can_ReturnType Can_Write( Can_Arc_HTHType hth, Can_PduType *pduInfo )
-{
-	// Write to mailbox on controller here.
-	DEBUG(DEBUG_MEDIUM, "Can_Write(stub): Received data ");
-	for (int i = 0; i < pduInfo->length; i++) {
-		DEBUG(DEBUG_MEDIUM, "%d ", pduInfo->sdu[i]);
-	}
-	DEBUG(DEBUG_MEDIUM, "\n");
-
-	return E_OK;
-}
-
-extern void CanIf_RxIndication(uint8 Hrh, Can_IdType CanId, uint8 CanDlc, const uint8 *CanSduPtr);
-Can_ReturnType Can_ReceiveAFrame()
-{
-	// This function is not part of autosar but needed to feed the stack with data
-	// from the mailboxes. Normally this is an interrup but probably not in the PCAN case.
-	uint8 CanSduData[] = {1,2,1,0,0,0,0,0};
-	CanIf_RxIndication(CAN_HRH_A_1, 3, 8, CanSduData);
-
-	return E_OK;
-}
-
-void Can_DisableControllerInterrupts( uint8 controller )
-{
-}
-
-void Can_EnableControllerInterrupts( uint8 controller )
-{
-}
-
-
-// Hth - for Flexcan, the hardware message box number... .We don't care
-void Can_Cbk_CheckWakeup( uint8 controller ){}
-
-void Can_MainFunction_Write( void ){}
-void Can_MainFunction_Read( void ){}
-void Can_MainFunction_BusOff( void ){}
-void Can_MainFunction_Wakeup( void ){}
-
-void Can_Arc_GetStatistics( uint8 controller, Can_Arc_StatisticsType * stat){}
-
-#endif
 
 

@@ -35,7 +35,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "Os.h"
-#include "irq.h"
+#include "isr.h"
 #include "arc.h"
 
 // bits in CANxCTL0:
@@ -561,15 +561,10 @@ static void Can_TxIsr(int unit) {
 
 #define INSTALL_HANDLERS(_can_name,_err,_wake,_rx,_tx) \
   do { \
-    TaskType tid; \
-    tid = Os_Arc_CreateIsr(_can_name ## _ErrIsr,2/*prio*/,"Can"); \
-    Irq_AttachIsr2(tid,NULL,_err); \
-    tid = Os_Arc_CreateIsr(_can_name ## _WakeIsr,2/*prio*/,"Can"); \
-    Irq_AttachIsr2(tid,NULL,_wake); \
-    tid = Os_Arc_CreateIsr(_can_name ## _RxIsr,2/*prio*/,"Can"); \
-	Irq_AttachIsr2(tid,NULL,_rx); \
-    tid = Os_Arc_CreateIsr(_can_name ## _TxIsr,2/*prio*/,"Can"); \
-	Irq_AttachIsr2(tid,NULL,_tx); \
+    ISR_INSTALL_ISR2("Can",_can_name ## _ErrIsr,_err,2,0); \
+	ISR_INSTALL_ISR2("Can",_can_name ## _WakeIsr,_wake,2,0); \
+	ISR_INSTALL_ISR2("Can",_can_name ## _RxIsr,_rx,2,0); \
+	ISR_INSTALL_ISR2("Can",_can_name ## _TxIsr,_tx,2,0); \
   } while(0);
 
 // This initiates ALL can controllers
@@ -694,7 +689,7 @@ void Can_InitController( uint8 controller, const Can_ControllerConfigType *confi
 
   // Start this baby up
   canHw->CTL0 = BM_INITRQ;				// request Init Mode
-  while((canHw->CTL1 & BM_INITAK) == 0);   // wait until Init Mode is established
+  while((canHw->CTL1 & BM_INITAK) == 0) ;   // wait until Init Mode is established
 
   // set CAN enable bit, deactivate listen-only mode,
   // use Bus Clock as clock source and select loop back mode on/off
@@ -753,7 +748,7 @@ void Can_InitController( uint8 controller, const Can_ControllerConfigType *confi
   canHw->BTR1 = (config->CanControllerSeg2 << 4) | config->CanControllerSeg1;
 
   canHw->CTL0 &= ~BM_INITRQ;				// exit Init Mode
-  while((canHw->CTL1 & BM_INITAK) != 0);// wait until Normal Mode is established
+  while((canHw->CTL1 & BM_INITAK) != 0) ;// wait until Normal Mode is established
 
   canHw->TBSEL = BM_TX0;					// use (only) TX buffer 0
 

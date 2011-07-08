@@ -54,11 +54,20 @@
 #if defined(USE_GPT)
 #include "Gpt.h"
 #endif
+#if defined(USE_FLS)
+#include "Fls.h"
+#endif
+#if defined(USE_EEP)
+#include "Eep.h"
+#endif
 #if defined(USE_WDG)
 #include "Wdg.h"
 #endif
 #if defined(USE_WDGM)
 #include "WdgM.h"
+#endif
+#if defined(USE_WDGIF)
+#include "WdgIf.h"
 #endif
 #if defined(USE_COMM)
 #include "ComM.h"
@@ -127,6 +136,9 @@ typedef struct
 #if defined(USE_WDG)
     const Wdg_ConfigType* WdgConfig;
 #endif
+#if defined(USE_WDGIF)
+    const WdgIf_ConfigType* WdgIfConfig;
+#endif
 #if defined(USE_WDGM)
     const WdgM_ConfigType* WdgMConfig;
 #endif
@@ -135,6 +147,12 @@ typedef struct
 #endif
 #if defined(USE_FLS)
 	const Fls_ConfigType* FlashConfig;
+#endif
+#if defined(USE_EEP)
+	const Eep_ConfigType* EepConfig;
+#endif
+#if defined(USE_SPI)
+	const Spi_ConfigType* SpiConfig;
 #endif
 } EcuM_ConfigType;
 

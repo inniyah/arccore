@@ -15,16 +15,35 @@
 
 #include "Os.h"
 #include "internal.h"
+#include "isr.h"
 #include "irq.h"
 #include "arc.h"
+#include "irq_types.h"
+#include "counter_i.h"
+#include "mpc55xx.h"
 
 /**
  * Init of free running timer.
  */
+extern void OsTick( void );
+extern OsTickType OsTickFreq;
+
+
+#if defined(CFG_MPC5606S)
+void Os_SysTick_MPC5606( void ) {
+	/* Clear API interrupt */
+	RTC.RTCS.B.APIF = 1;
+
+	OsTick();
+}
+#endif
+
 void Os_SysTickInit( void ) {
-	TaskType tid;
-	tid = Os_Arc_CreateIsr(OsTick,6/*prio*/,"OsTick");
-	Irq_AttachIsr2(tid,NULL,7);
+#if defined(CFG_MPC5606S)
+	ISR_INSTALL_ISR2("OsTick",Os_SysTick_MPC5606,API_INT,6,0);
+#else
+	ISR_INSTALL_ISR2("OsTick",OsTick,INTC_SSCIR0_CLR7,6,0);
+#endif
 }
 
 /**
@@ -35,26 +54,48 @@ void Os_SysTickInit( void ) {
  *
  */
 void Os_SysTickStart(uint32_t period_ticks) {
-	uint32_t tmp;
+#if defined(CFG_MPC5606S)
+	CGM.SXOSC_CTL.B.OSCON = 1;	// enable the osc for RTC
 
-	// Enable the TB
-	tmp = get_spr(SPR_HID0);
-	tmp |= HID0_TBEN;
-	set_spr(SPR_HID0, tmp);
 
-	/* Initialize the Decrementer */
-	set_spr(SPR_DEC, period_ticks);
-	set_spr(SPR_DECAR, period_ticks);
+	RTC.RTCC.R= 0;		// disable RTC counter
+//	RTC.RTCC.B.CNTEN = 0;		// disable RTC counter
+//	RTC.RTCC.B.APIEN = 0;		// disable API
+	RTC.RTCS.B.RTCF = 1;		// clear RTC interrupt flag
+	RTC.RTCS.B.APIF = 1;		// clear API interrupt flag
+	RTC.RTCC.B.RTCIE = 0;		// disable RTC interrupt
+	RTC.RTCC.B.APIIE = 1;		// enable API interrupt
+	RTC.RTCC.B.FRZEN = 1;		// enable freeze mode
+	RTC.RTCC.B.CLKSEL = 2;		// set 16MHz FIRC as input clock
+	RTC.RTCC.B.DIV32EN = 1;     // Divide by 32 enable
+	// ignore period_ticks, and set API compare value
+	RTC.RTCC.B.APIVAL = (uint32_t)(500000 / OsTickFreq);
+	(void)period_ticks;
 
-	/* Set autoreload */
-	tmp = get_spr(SPR_TCR);
-	tmp |= TCR_ARE;
-	set_spr(SPR_TCR, tmp);
+	RTC.RTCC.B.APIEN = 1;		// start API
+	RTC.RTCC.B.CNTEN = 1;		// enable RTC counter
+#else
+		uint32 tmp;
 
-	/* Enable notification */
-    tmp = get_spr(SPR_TCR);
-    tmp |= TCR_DIE;
-    set_spr(SPR_TCR, tmp );
+    	// Enable the TB
+    	tmp = get_spr(SPR_HID0);
+    	tmp |= HID0_TBEN;
+    	set_spr(SPR_HID0, tmp);
+
+    	/* Initialize the Decrementer */
+    	set_spr(SPR_DEC, period_ticks);
+    	set_spr(SPR_DECAR, period_ticks);
+
+    	/* Set autoreload */
+    	tmp = get_spr(SPR_TCR);
+    	tmp |= TCR_ARE;
+    	set_spr(SPR_TCR, tmp);
+
+    	/* Enable notification */
+        tmp = get_spr(SPR_TCR);
+        tmp |= TCR_DIE;
+        set_spr(SPR_TCR, tmp );
+#endif
 }
 
 /**

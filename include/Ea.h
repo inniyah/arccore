@@ -14,17 +14,8 @@
  * -------------------------------- Arctic Core ------------------------------*/
 
 
-
-
-
-
-
-
 #ifndef EA_H_
 #define EA_H_
-
-#include "Ea_Cfg.h"
-
 
 #define EA_MODULE_ID			MODULE_ID_EA
 #define EA_VENDOR_ID			1
@@ -32,10 +23,41 @@
 #define EA_SW_MAJOR_VERSION	1
 #define EA_SW_MINOR_VERSION	0
 #define EA_SW_PATCH_VERSION	0
-#define EA_AR_MAJOR_VERSION	3
+#define EA_AR_MAJOR_VERSION	4   // Implemented after the 4.0.2 specification due to the poor quality of 3.1 specification
 #define EA_AR_MINOR_VERSION	0
-#define EA_AR_PATCH_VERSION	1
+#define EA_AR_PATCH_VERSION	2
 
+#include "Eep.h"
+#include "Ea_Cfg.h"
+
+/*
+ *  API parameter checking
+ */
+/** @req EA139 */
+#define EA_E_NOT_INITIALIZED		0x01
+/** @req EA140 */
+#define EA_E_INVALID_BLOCK_NO		0x02
+
+/*
+ * EA Module Service ID Macro Collection
+*/
+typedef enum {
+	 EA_INIT_ID = 0x00,
+	 EA_SETMODE_ID,
+	 EA_READ_ID,
+	 EA_WRITE_ID,
+	 EA_CANCEL_ID,
+	 EA_GETSTATUS_ID,
+	 EA_GETJOBRESULT_ID,
+	 EA_INVALIDATEBLOCK_ID,
+	 EA_GETVERSIONINFO_ID,
+	 EA_ERASEIMMEDIATEBLOCK_ID,
+	 EA_MAIN_ID = 0x12
+} Ea_APIServiceIDType;
+
+/*@req <EA061> */
+/*@req <EA062> */
+/*@req <EA082> */
 #if ( EA_VERSION_INFO_API == STD_ON )
 #define Ea_GetVersionInfo(_vi) STD_GET_VERSION_INFO(_vi, EA)	/** @req EA092 */
 #endif /* EA_VERSION_INFO_API */

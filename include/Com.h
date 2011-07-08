@@ -28,7 +28,7 @@
 
 
 #define COM_SW_MAJOR_VERSION   1
-#define COM_SW_MINOR_VERSION   1
+#define COM_SW_MINOR_VERSION   2
 #define COM_SW_PATCH_VERSION   0
 
 #include "Com_Cfg.h"
@@ -78,5 +78,7 @@ void Com_DeInit(void);
 void Com_IpduGroupStart(Com_PduGroupIdType IpduGroupId, boolean Initialize);
 void Com_IpduGroupStop(Com_PduGroupIdType IpduGroupId);
 
+
+extern ComSignalEndianess_type Com_SystemEndianness;
 
 #endif /*COM_H_*/

@@ -20,7 +20,7 @@
 #include "Adc.h"
 #include "Det.h"
 #include "Os.h"
-#include "irq.h"
+#include "isr.h"
 #include "regs.h"
 #include "arc.h"
 
@@ -72,10 +72,16 @@ typedef enum
 /* Function prototypes. */
 
 /* Development error checking. */
+#if (ADC_READ_GROUP_API == STD_ON)
 static Std_ReturnType Adc_CheckReadGroup (Adc_GroupType group);
+#endif
+#if (ADC_ENABLE_START_STOP_GROUP_API == STD_ON)
 static Std_ReturnType Adc_CheckStartGroupConversion (Adc_GroupType group);
+static Std_ReturnType Adc_CheckStopGroupConversion (Adc_GroupType group);
+#endif
 static Std_ReturnType Adc_CheckInit (const Adc_ConfigType *ConfigPtr);
 static Std_ReturnType Adc_CheckSetupResultBuffer (Adc_GroupType group);
+static Std_ReturnType Adc_CheckDeInit (void);
 
 static void Adc_GroupConversionComplete (void);
 
@@ -84,11 +90,39 @@ static Adc_StateType adcState = ADC_UNINIT;
 /* Pointer to configuration structure. */
 static const Adc_ConfigType *AdcConfigPtr;
 
+/* Validate functions used for development error check */
+#if ( ADC_DEV_ERROR_DETECT == STD_ON )
+Std_ReturnType ValidateInit(Adc_APIServiceIDType api)
+{
+	Std_ReturnType res = E_OK;
+	if(!(ADC_INIT == adcState)) {
+		Det_ReportError(MODULE_ID_ADC,0,api,ADC_E_UNINIT );
+		res = E_NOT_OK;
+	}
+	return res;
+}
+Std_ReturnType ValidateGroup(Adc_GroupType group,Adc_APIServiceIDType api)
+{
+	Std_ReturnType res = E_OK;
+	if(!((group >= 0) && (group < AdcConfig->nbrOfGroups))) {
+		Det_ReportError(MODULE_ID_ADC,0,api,ADC_E_PARAM_GROUP );
+		res = E_NOT_OK;
+	}
+	return res;
+}
+#endif
+
 #if (ADC_DEINIT_API == STD_ON)
 Std_ReturnType Adc_DeInit (const Adc_ConfigType *ConfigPtr)
 {
+	if (E_OK == Adc_CheckDeInit())
+	{
+	    /* Clean internal status. */
+	    AdcConfigPtr = (Adc_ConfigType *)NULL;
+	    adcState = ADC_UNINIT;
+	}
 
-  return (E_OK);
+	 return (E_OK);
 }
 #endif
 
@@ -103,18 +137,17 @@ Std_ReturnType Adc_Init (const Adc_ConfigType *ConfigPtr)
     AdcConfigPtr = ConfigPtr;
 
     // Connect interrupt to correct isr
-	TaskType tid;
-	tid = Os_Arc_CreateIsr(Adc_GroupConversionComplete,6/*prio*/,"ADC");
-	Irq_AttachIsr2(tid,NULL, IRQ_TYPE_ATD0);
+	ISR_INSTALL_ISR2("ADC",Adc_GroupConversionComplete,IRQ_TYPE_ATD0,6,0);
+
 
 	ATD0CTL2   = BM_ADPU | BM_AFFC | BM_ASCIE;	/* power enable, Fast Flag Clear, irq enable*/
-    ATD0CTL3   = 0x00;	/* 8 conversions per sequence default */
+    ATD0CTL3   = 0x03;	/* 8 conversions per sequence default, freeze enable */
 
     ATD0CTL4   = (ConfigPtr->hwConfigPtr->resolution << 7) |
     		     (ConfigPtr->hwConfigPtr->convTime << 5) |
     		      ConfigPtr->hwConfigPtr->adcPrescale;
 
-    for (group = ADC_GROUP0; group < ADC_NBR_OF_GROUPS; group++)
+    for (group = 0; group < ADC_NBR_OF_GROUPS; group++)
     {
       /* ADC307. */
       ConfigPtr->groupConfigPtr[group].status->groupStatus = ADC_IDLE;
@@ -202,20 +235,21 @@ Std_ReturnType Adc_ReadGroup (Adc_GroupType group, Adc_ValueGroupType *dataBuffe
 
 Adc_StatusType Adc_GetGroupStatus (Adc_GroupType group)
 {
-  Adc_StatusType returnValue;
-  if ((ADC_INIT == adcState) && (AdcConfigPtr != NULL))
-  {
-    /* Adc initilised, OK to move on... */
-    returnValue = AdcConfigPtr->groupConfigPtr[group].status->groupStatus;
-  }
-  else
-  {
-    returnValue = ADC_IDLE;
-#if ( ADC_DEV_ERROR_DETECT == STD_ON )
-    Det_ReportError(MODULE_ID_ADC,0,ADC_GETGROUPSTATUS_ID, ADC_E_UNINIT );
-#endif
-    }
+	Adc_StatusType returnValue;
 
+#if ( ADC_DEV_ERROR_DETECT == STD_ON )
+	if( (ValidateInit(ADC_GETGROUPSTATUS_ID) == E_NOT_OK) ||
+		(ValidateGroup(group, ADC_GETGROUPSTATUS_ID) == E_NOT_OK))
+	{
+		returnValue = ADC_IDLE;
+	}
+	else
+	{
+		returnValue = AdcConfigPtr->groupConfigPtr[group].status->groupStatus;
+	}
+#else
+  returnValue = AdcConfigPtr->groupConfigPtr[group].status->groupStatus;
+#endif
   return (returnValue);
 }
 
@@ -227,7 +261,7 @@ static void Adc_GroupConversionComplete (void)
   ATD0STAT0 = SCF;
 
   // Check which group is busy, only one is allowed to be busy at a time in a hw unit
-  for (index = ADC_GROUP0; index < ADC_NBR_OF_GROUPS; index++)
+  for (index = 0; index < ADC_NBR_OF_GROUPS; index++)
   {
 	  if(AdcConfigPtr->groupConfigPtr[index].status->groupStatus == ADC_BUSY)
 	  {
@@ -283,17 +317,76 @@ void Adc_StartGroupConversion (Adc_GroupType group)
     }
   }
 }
+
+void Adc_StopGroupConversion (Adc_GroupType group)
+{
+  /* Run development error check. */
+  if (E_OK == Adc_CheckStopGroupConversion (group))
+  {
+	   ATD0CTL3 = 0x03; /* Hard write to stop current conversion */
+  }
+  else
+  {
+	/* Error have been set within Adc_CheckStartGroupConversion(). */
+  }
+}
 #endif
 
 #if (ADC_GRP_NOTIF_CAPABILITY == STD_ON)
 void Adc_EnableGroupNotification (Adc_GroupType group)
 {
-	AdcConfigPtr->groupConfigPtr[group].status->notifictionEnable = 1;
+	Std_ReturnType res;
+
+#if ( ADC_DEV_ERROR_DETECT == STD_ON )
+	if( (ValidateInit(ADC_ENABLEGROUPNOTIFICATION_ID) == E_NOT_OK) ||
+		(ValidateGroup(group, ADC_ENABLEGROUPNOTIFICATION_ID) == E_NOT_OK))
+	{
+		res = E_NOT_OK;
+	}
+	else if (AdcConfigPtr->groupConfigPtr[group].groupCallback == NULL)
+	{
+		res = E_NOT_OK;
+		Det_ReportError(MODULE_ID_ADC,0,ADC_ENABLEGROUPNOTIFICATION_ID ,ADC_E_NOTIF_CAPABILITY );
+	}
+	else
+	{
+		/* Nothing strange. Go on... */
+		res = E_OK;
+	}
+#else
+	res = E_OK;
+#endif
+	if (E_OK == res){
+		AdcConfigPtr->groupConfigPtr[group].status->notifictionEnable = 1;
+	}
 }
 
 void Adc_DisableGroupNotification (Adc_GroupType group)
 {
-	AdcConfigPtr->groupConfigPtr[group].status->notifictionEnable = 0;
+	Std_ReturnType res;
+
+#if ( ADC_DEV_ERROR_DETECT == STD_ON )
+	if( (ValidateInit(ADC_DISABLEGROUPNOTIFICATION_ID) == E_NOT_OK) ||
+		(ValidateGroup(group, ADC_DISABLEGROUPNOTIFICATION_ID) == E_NOT_OK))
+	{
+		res = E_NOT_OK;
+	}
+	else if (AdcConfigPtr->groupConfigPtr[group].groupCallback == NULL)
+	{
+		res = E_NOT_OK;
+		Det_ReportError(MODULE_ID_ADC,0,ADC_DISABLEGROUPNOTIFICATION_ID ,ADC_E_NOTIF_CAPABILITY );
+	}
+	else
+	{
+		/* Nothing strange. Go on... */
+		res = E_OK;
+	}
+#else
+	res = E_OK;
+#endif
+	if (E_OK == res){
+		AdcConfigPtr->groupConfigPtr[group].status->notifictionEnable = 0;
+	}
 }
 #endif
 
@@ -339,41 +432,84 @@ static Std_ReturnType Adc_CheckReadGroup (Adc_GroupType group)
 #if (ADC_ENABLE_START_STOP_GROUP_API == STD_ON)
 static Std_ReturnType Adc_CheckStartGroupConversion (Adc_GroupType group)
 {
+	  Std_ReturnType returnValue;
+
+	#if ( ADC_DEV_ERROR_DETECT == STD_ON )
+
+	  if( (ValidateInit(ADC_STARTGROUPCONVERSION_ID) == E_NOT_OK) ||
+	      (ValidateGroup(group, ADC_STARTGROUPCONVERSION_ID) == E_NOT_OK))
+	  {
+		  returnValue = E_NOT_OK;
+	  }
+	  else if ( NULL == AdcConfigPtr->groupConfigPtr[group].status->resultBufferPtr )
+	  {
+	      /* ResultBuffer not set, ADC424 */
+		  Det_ReportError(MODULE_ID_ADC,0,ADC_STARTGROUPCONVERSION_ID, ADC_E_BUFFER_UNINIT );
+		  returnValue = E_NOT_OK;
+	  }
+	  else if (!(ADC_TRIGG_SRC_SW == AdcConfigPtr->groupConfigPtr[group].triggerSrc))
+	  {
+	    /* Wrong trig source, ADC133. */
+	    Det_ReportError(MODULE_ID_ADC,0,ADC_STARTGROUPCONVERSION_ID, ADC_E_WRONG_TRIGG_SRC);
+	    returnValue = E_NOT_OK;
+	  }
+	  else if (!((ADC_IDLE             == AdcConfigPtr->groupConfigPtr[group].status->groupStatus) ||
+	             (ADC_STREAM_COMPLETED == AdcConfigPtr->groupConfigPtr[group].status->groupStatus)))
+	  {
+	    /* Group status not OK, ADC351, ADC428 */
+	    Det_ReportError(MODULE_ID_ADC,0,ADC_STARTGROUPCONVERSION_ID, ADC_E_BUSY );
+
+	    /*
+	     * This is a BUG!
+	     * Sometimes the ADC-interrupt gets lost which means that the status is never reset to ADC_IDLE (done in Adc_ReadGroup).
+	     * Therefor another group conversion is never started...
+	     *
+	     * The temporary fix is to always return E_OK here. But the reason for the bug needs to be investigated further.
+	     */
+	    //returnValue = E_NOT_OK;
+	    returnValue = E_OK;
+	  }
+	  else
+	  {
+	    returnValue = E_OK;
+	  }
+	#else
+	  returnValue = E_OK;
+	#endif
+
+	  return (returnValue);
+}
+
+static Std_ReturnType Adc_CheckStopGroupConversion (Adc_GroupType group)
+{
   Std_ReturnType returnValue;
+
 #if ( ADC_DEV_ERROR_DETECT == STD_ON )
-  if (!(ADC_INIT == adcState))
+  if( (ValidateInit(ADC_STOPGROUPCONVERSION_ID) == E_NOT_OK) ||
+      (ValidateGroup(group, ADC_STOPGROUPCONVERSION_ID) == E_NOT_OK))
   {
-    /* ADC not initialised, ADC294. */
-    Det_ReportError(MODULE_ID_ADC,0,ADC_STARTGROUPCONVERSION_ID, ADC_E_UNINIT );
-    returnValue = E_NOT_OK;
-  }
-  else  if (!((group >= 0) && (group < ADC_NBR_OF_GROUPS)))
-  {
-    /* Wrong group ID, ADC125 */
-    Det_ReportError(MODULE_ID_ADC,0,ADC_STARTGROUPCONVERSION_ID, ADC_E_PARAM_GROUP );
-    returnValue = E_NOT_OK;
+	  returnValue = E_NOT_OK;
   }
   else if (!(ADC_TRIGG_SRC_SW == AdcConfigPtr->groupConfigPtr[group].triggerSrc))
   {
-    /* Wrong trig source, ADC133. */
-    Det_ReportError(MODULE_ID_ADC,0,ADC_STARTGROUPCONVERSION_ID, ADC_E_WRONG_TRIGG_SRC);
-    returnValue = E_NOT_OK;
+	/* Wrong trig source, ADC164. */
+	Det_ReportError(MODULE_ID_ADC,0,ADC_STOPGROUPCONVERSION_ID, ADC_E_WRONG_TRIGG_SRC);
+	returnValue = E_NOT_OK;
   }
-  else if (!((ADC_IDLE             == AdcConfigPtr->groupConfigPtr[group].status->groupStatus) ||
-             (ADC_STREAM_COMPLETED == AdcConfigPtr->groupConfigPtr[group].status->groupStatus)))
+  else if (ADC_IDLE == AdcConfigPtr->groupConfigPtr[group].status->groupStatus)
   {
-    /* Group status not OK, ADC351, ADC428 */
-    Det_ReportError(MODULE_ID_ADC,0,ADC_STARTGROUPCONVERSION_ID, ADC_E_BUSY );
-
-    returnValue = E_NOT_OK;
+	/* Group status not OK, ADC241 */
+	Det_ReportError(MODULE_ID_ADC,0,ADC_STOPGROUPCONVERSION_ID, ADC_E_IDLE );
+	returnValue = E_NOT_OK;
   }
   else
   {
-    returnValue = E_OK;
+	returnValue = E_OK;
   }
 #else
   returnValue = E_OK;
 #endif
+
   return (returnValue);
 }
 #endif
@@ -406,32 +542,45 @@ static Std_ReturnType Adc_CheckInit (const Adc_ConfigType *ConfigPtr)
   return (returnValue);
 }
 
-static Std_ReturnType Adc_CheckSetupResultBuffer (Adc_GroupType group)
+static Std_ReturnType Adc_CheckDeInit (void)
 {
-  Std_ReturnType returnValue;
+	Std_ReturnType returnValue = E_OK;
 
 #if ( ADC_DEV_ERROR_DETECT == STD_ON )
-  if (ADC_UNINIT == adcState)
-  {
-    /* Driver not initialised. */
-    Det_ReportError(MODULE_ID_ADC,0,ADC_SETUPRESULTBUFFER_ID,ADC_E_UNINIT );
-    returnValue = E_NOT_OK;
-  }
-  else if (group < ADC_NBR_OF_GROUPS)
-  {
-    /* ADC423 */
-    Det_ReportError(MODULE_ID_ADC,0,ADC_SETUPRESULTBUFFER_ID,ADC_E_PARAM_GROUP );
-    returnValue = E_NOT_OK;
-  }
-  else
-  {
-    /* Looks good!! */
-    returnValue = E_OK;
-  }
+	if(ValidateInit(ADC_DEINIT_ID) == E_OK)
+	{
+		for (Adc_GroupType group = ADC_GROUP0; group < AdcConfigPtr->nbrOfGroups; group++)
+		{
+			/*  Check ADC is IDLE or COMPLETE*/
+			if((AdcConfigPtr->groupConfigPtr[group].status->groupStatus != ADC_IDLE) && (AdcConfigPtr->groupConfigPtr[group].status->groupStatus != ADC_STREAM_COMPLETED))
+			{
+				Det_ReportError(MODULE_ID_ADC,0,ADC_DEINIT_ID, ADC_E_BUSY );
+				returnValue = E_NOT_OK;
+			}
+		}
+	}
+	else
+	{
+		returnValue = E_NOT_OK;
+	}
 #else
-  returnValue = E_OK;
+	returnValue = E_OK;
 #endif
-  return (returnValue);
+	return (returnValue);
+}
+static Std_ReturnType Adc_CheckSetupResultBuffer (Adc_GroupType group)
+{
+	  Std_ReturnType returnValue = E_OK;
+
+	#if ( ADC_DEV_ERROR_DETECT == STD_ON )
+	  if(ValidateGroup(group, ADC_SETUPRESULTBUFFER_ID) == E_NOT_OK)
+	  {
+		  returnValue = E_NOT_OK;
+	  }
+	#else
+	  returnValue = E_OK;
+	#endif
+	  return (returnValue);
 }
 
 

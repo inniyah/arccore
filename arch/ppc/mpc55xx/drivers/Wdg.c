@@ -13,74 +13,109 @@
  * for more details.
  * -------------------------------- Arctic Core ------------------------------*/
 
-
-
-
-
-
-
-
-/*
- * Wdg.c
- *
- *  Created on: 2009-jul-22
- *      Author: rosa
- */
-
-
 #include "mpc55xx.h"
+#include "Wdg.h"
 #include "Mcu.h"
+
+
+static const Wdg_ConfigType *configWdgPtr;
+static const Wdg_SettingsType *modeWdgConfig;
+
 void StartWatchdog(void)
 {
-  // Setup watchdog
-  // R0    =  0 Not read only
-  // SWRWH =  0 SWT stops counting if the processor core is halted.
-  // SWE   =  1 SWT is enabled.
-  // SWRI  =  2 If a time-out occurs, the SWT generates a system reset.
-  // SWT   = 24 For SWT = n, then time-out period = 2^n system clock cycles, n = 8 9,..., 31.
-  //            SWT = 24  =>  period = 262144 clock cycles ( 254ms @ 66MHz )
 #if defined(CFG_MPC5567)
-  ECSM.SWTCR.R =  0x00D8;;
+	ECSM.SWTCR.R =  0x00D8;;
+#elif defined(CFG_MPC5606S)
+	SWT.CR.R = 0x8000011B;
 #else
-  MCM.SWTCR.R = 0x00D8;
+	MCM.SWTCR.R = 0x00D8;
 #endif
+
 }
 
-void StopWatchdog(void)
+ void StopWatchdog(void)
+ {
+ #if defined(CFG_MPC5567)
+ 	ECSM.SWTCR.R =  0x0059;;
+ #elif defined(CFG_MPC5606S)
+ 	SWT.SR.R = 0x0000c520;     /* Write keys to clear soft lock bit */
+ 	SWT.SR.R = 0x0000d928;
+ 	SWT.CR.R = 0x8000010A;
+ #else
+ 	MCM.SWTCR.R = 0x0059;
+ #endif
+ }
+
+void Wdg_Init (const Wdg_ConfigType* ConfigPtr)
 {
-  // Stop the watchdog
-  // R0 = 0     Not read only
-  // SWRWH = 0  SWT stops counting if the processor core is halted.
-  // SWE = 0    SWT is disabled.
-  // SWRI = 2   If a time-out occurs, the SWT generates a system reset.
-  // SWT = 19   For SWT = n, then time-out period = 2^n system clock cycles, n = 8 9,..., 31.
-  //            SWT = 19  =>  period = 524288 clock cycles ( 8.7ms @ 60MHz )
-#if defined(CFG_MPC5567)
-  ECSM.SWTCR.R =  0x0059;;
-#else
-  MCM.SWTCR.R = 0x0059;
+	/* Keep a pointer to the config. */
+	configWdgPtr = ConfigPtr;
+
+	Wdg_SetMode(ConfigPtr->Wdg_ModeConfig->Wdg_DefaultMode);
+}
+
+Std_ReturnType Wdg_SetMode (WdgIf_ModeType Mode)
+{
+	Std_ReturnType res = E_NOT_OK;
+	switch (Mode)
+	{
+	case WDGIF_OFF_MODE:
+		modeWdgConfig = &configWdgPtr->Wdg_ModeConfig->WdgSettingsOff;
+		break;
+	case WDGIF_FAST_MODE:
+		modeWdgConfig = &configWdgPtr->Wdg_ModeConfig->WdgSettingsFast;
+		break;
+	case WDGIF_SLOW_MODE:
+		modeWdgConfig = &(configWdgPtr->Wdg_ModeConfig->WdgSettingsSlow);
+		break;
+	default:
+		modeWdgConfig = 0;
+		break;
+	}
+	if (modeWdgConfig != 0)
+	{
+		/* Enable watchdog if config tell us to.. */
+		if (modeWdgConfig->ActivationBit)
+		{
+#if defined(CFG_MPC5606S)
+		  StopWatchdog(); // must be stopped in order to change TO
+ 		  SWT.TO.R = modeWdgConfig->ReloadValue;
 #endif
+			StartWatchdog();
+		}
+		else
+		{
+			StopWatchdog();
+		}
+		res = E_OK;
+	}
+
+	return res;
 }
 
 
 /* This function services the internal Watchdog timer */
-void KickWatchdog(void)
+void Wdg_Trigger (void)
 {
-  uint32 prevIEN;
+	uint32 tmp;
 
-  prevIEN = McuE_EnterCriticalSection();
+	tmp = McuE_EnterCriticalSection();
 
-//  According to MPC55xx manual:
-//  To prevent the watchdog timer from interrupting or resetting
-//  the SWTSR must be serviced by performing the following sequence:
-//  1. Write 0x55 to the SWTSR.
-//  2. Write 0xAA to the SWTSR.
+	//  According to MPC55xx manual:
+	//  To prevent the watchdog timer from interrupting or resetting
+	//  the SWTSR must be serviced by performing the following sequence:
+	//  1. Write 0x55 to the SWTSR.
+	//  2. Write 0xAA to the SWTSR.
 #if defined(CFG_MPC5567)
-  ECSM.SWTSR.R = 0x55;
-  ECSM.SWTSR.R = 0xAA;
+	ECSM.SWTSR.R = 0x55;
+	ECSM.SWTSR.R = 0xAA;
+#elif defined(CFG_MPC5606S)
+	SWT.SR.R = 0x0000A602;
+	SWT.SR.R = 0x0000B480;
 #else
-  MCM.SWTSR.R = 0x55;
-  MCM.SWTSR.R = 0xAA;
+	MCM.SWTSR.R = 0x55;
+	MCM.SWTSR.R = 0xAA;
 #endif
-  McuE_ExitCriticalSection(prevIEN);
+
+	McuE_ExitCriticalSection(tmp);
 }

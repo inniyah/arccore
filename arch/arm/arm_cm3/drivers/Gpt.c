@@ -21,7 +21,7 @@
 #include <string.h>
 #if defined(USE_KERNEL)
 #include "Os.h"
-#include "irq.h"
+#include "isr.h"
 #include "arc.h"
 #endif
 #include "stm32f10x.h"
@@ -62,7 +62,7 @@
 #include "Det.h"
 #if defined(USE_KERNEL)
 #include "Os.h"
-#include "irq.h"
+#include "isr.h"
 #endif
 
 // Implementation specific
@@ -238,14 +238,14 @@ void Gpt_Init(const Gpt_ConfigType *config)
 		{
 			if (cfg->GptNotification != NULL)
 			{
-
-#if defined(USE_KERNEL)
-				TaskType tid;
-				tid = Os_Arc_CreateIsr(Gpt_Isr, 6, "Gpt_Isr");
-				Irq_AttachIsr2(tid, NULL, IrqVector[ch]);
-#else
-				//IntCtrl_InstallVector(Gpt_Isr, PIT_PITFLG_RTIF + ch, 1, CPU_Z1); TODO
-#endif
+				switch (ch) {
+					case 0: ISR_INSTALL_ISR2( "Gpt_Isr", Gpt_Isr, TIM1_UP_IRQn, 6, 0 ); break;
+					case 1: ISR_INSTALL_ISR2( "Gpt_Isr", Gpt_Isr, TIM2_IRQn,    6, 0 ); break;
+					case 2: ISR_INSTALL_ISR2( "Gpt_Isr", Gpt_Isr, TIM3_IRQn,    6, 0 ); break;
+					case 3: ISR_INSTALL_ISR2( "Gpt_Isr", Gpt_Isr, TIM4_IRQn,    6, 0 ); break;
+					default:
+						break;
+				}
 			}
 		}
 #if defined(USE_KERNEL)

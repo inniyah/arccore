@@ -27,8 +27,14 @@
 #include "Os_Cfg.h"
 #include "MemMap.h"
 #include "Cpu.h"
+#include "limits.h"
+#include <sys/queue.h>
 
 typedef uint8 StatusType;
+
+#if (OS_ISR_CNT > OS_ISR_MAX_CNT)
+#error OS configuration error. OS_ISR_MAX_CNT must be bigger or equal to OS_ISR_CNT
+#endif
 
 #define E_OS_ACCESS (StatusType)1               /**< STD OSEK */
 #define	E_OS_CALLEVEL (StatusType)2             /**< STD OSEK */
@@ -72,12 +78,27 @@ typedef TaskStateType *TaskStateRefType;
 
 /* FIXME: OSMEMORY_IS__ , see 8.2*/
 
+#define OSMEMORY_IS_READABLE(_access)
+#define OSMEMORY_IS_WRITEABLE(_access)
+#define OSMEMORY_IS_EXECUTABLE(_access)
+#define OSMEMORY_IS_STACKSPACE(_access)
+
 #define OSDEFAULTAPPMODE  1
 
 #define INVALID_OSAPPLICATION (-1)
 
 /* TODO, I have no idea what this should be*/
+#if (OS_USE_APPLICATIONS == STD_ON)
 typedef sint32 ApplicationType;
+
+typedef enum {
+	APPLICATION_ACCESSIBLE,
+	APPLICATION_RESTARTING,
+	APPLICATION_TERMINATED
+} ApplicationStateType;
+
+typedef ApplicationStateType *ApplicationStateRefType;
+#endif
 
 /* See oil config for defines */
 typedef sint32 AppModeType;
@@ -151,6 +172,8 @@ typedef  void * TrustedFunctionParameterRefType;
 #define INVALID_ISR		((sint16)(-1))
 typedef	sint16 ISRType;
 
+#define APP_NO_OWNER	(-1UL)
+
 typedef void * MemoryStartAddressType;
 typedef uint32 MemorySizeType;
 
@@ -167,9 +190,6 @@ StatusType GetEvent( TaskType TaskId, EventMaskRefType Mask);
 void InitOS( void );
 void StartOS( AppModeType Mode );
 
-
-
-ApplicationType GetApplicationID( void );
 ISRType GetISRID( void );
 StatusType GetActiveApplicationMode( AppModeType* mode);
 
@@ -247,6 +267,9 @@ static inline void ResumeOSInterrupts( void ) {
 /*
  * Class 2,3 and 4 API
  */
+
+#if (OS_USE_APPLICATIONS == STD_ON)
+
 ApplicationType GetApplicationID( void );
 AccessType 	CheckISRMemoryAccess( 	ISRType ISRID,
 									MemoryStartAddressType Address,
@@ -256,8 +279,17 @@ AccessType 	CheckTaskMemoryAccess( 	TaskType TaskID,
 									MemoryStartAddressType Address,
 									MemorySizeType Size );
 
+ObjectAccessType CheckObjectAccess( ApplicationType ApplId,
+									ObjectTypeType ObjectType,
+									uint32_t objectId );
+ApplicationType CheckObjectOwnership( ObjectTypeType ObjectType,
+									uint32_t objectId );
+StatusType TerminateApplication(  ApplicationType Application, RestartType RestartOption );
+StatusType AllowAccess( void );
+StatusType GetApplicationState(   ApplicationType Application,  ApplicationStateRefType Value );
 StatusType 	CallTrustedFunction(	TrustedFunctionIndexType FunctionIndex,
 									TrustedFunctionParameterRefType FunctionParams );
+#endif
 
 StatusType 	GetTaskID(		TaskRefType TaskID );
 StatusType 	GetTaskState(	TaskType task_id, TaskStateRefType state);
@@ -313,6 +345,30 @@ void Os_SysTickInit( void );
 void Os_SysTickStart(TickType period_ticks);
 TickType Os_SysTickGetValue( void );
 TickType Os_SysTickGetElapsedValue( TickType preValue );
+
+/*-------------------------------------------------------------------
+ * Kernel extra
+ *-----------------------------------------------------------------*/
+
+#if defined(USE_KERNEL_EXTRA)
+
+#define TICK_MAX 	UINT_MAX
+
+typedef struct OsSemaphore {
+	int val;
+	STAILQ_HEAD(,OsTaskVar) taskHead;
+} OsSemaphoreType;
+
+typedef OsSemaphoreType OsMutexType;
+
+StatusType Sleep( TickType ticks );
+StatusType InitSemaphore( OsSemaphoreType *semPtr, int initialCount  );
+StatusType WaitSemaphore( OsSemaphoreType *semPtr, TickType tmo );
+void SignalSemaphore( OsSemaphoreType *semPtr );
+StatusType WaitMutex( OsMutexType *mutexPtr );
+StatusType ReleaseMutex( OsMutexType *mutexPtr );
+#endif
+
 
 /*-------------------------------------------------------------------
  * Schedule Tables
@@ -376,7 +432,28 @@ typedef enum {
     OSServiceId_PostTaskHook,
     OSServiceId_StartupHook,
     OSServiceId_ShutdownHook,
-    OSServiceId_GetTaskState
+    OSServiceId_GetTaskState,
+    OSServiceId_GetApplicationID,
+    OSServiceId_GetISRID,
+    OSServiceId_CallTrustedFunction,
+    OSServiceId_CheckISRMemoryAccess,
+    OSServiceId_TaskMemoryAccess,
+    OSServiceId_CheckObjectAccess,
+    OSServiceId_CheckObjectOwnership,
+    OSServiceId_StartScheduleTableRel,
+    OSServiceId_StartScheduleTableAbs,
+    OSServiceId_StopScheduleTable,
+    OSServiceId_NextScheduleTable,
+    OSServiceId_StartScheduleTableSynchron,
+    OSServiceId_SyncScheduleTable,
+    OSServiceId_GetScheduleTable,
+    OSServiceId_SetScheduleTableAsync,
+    OSServiceId_IncrementCounter,
+    OSServiceId_GetCounterValue,
+    OSServiceId_GetElapsedValue,
+    OSServiceId_TerminateApplication,
+    OSServiceId_AllowAccess,
+    OSServiceId_GetApplicationState
 } OsServiceIdType;
 
 typedef struct OsError {

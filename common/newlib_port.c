@@ -371,7 +371,7 @@ int write(  int fd, const void *_buf, size_t nbytes)
 		  unsigned char nCnt,nLen;
 		  for(nCnt=0; nCnt<nbytes; nCnt++)
 			{
-			while(TWBUFF_FULL());
+			while(TWBUFF_FULL()) ;
 			nLen=TWBUFF_TPTR;
 			g_TWBuffer[nLen]=buf[nCnt];
 			nLen=TWBUFF_INC(nLen);
@@ -411,7 +411,7 @@ int write(  int fd, const void *_buf, size_t nbytes)
 
 #ifdef USE_TTY_TMS570_KEIL
 	for (int i = 0; i < nbytes; i++) {
-		GLCD_PrintChar((_buf + i));
+		GLCD_PrintChar((char *)(_buf + i));
 	}
 #endif
 
@@ -450,8 +450,27 @@ int arc_putchar(int fd, int c) {
 
 /* If we use malloc and it runs out of memory it calls sbrk()
  */
-#if 1
 
+#if defined(PPC)
+
+/* linker symbols */
+extern char _heap_start;
+extern char _heap_end;		// same as _end?
+
+void * sbrk( ptrdiff_t incr )
+{
+    char *prevEnd;
+    static char *nextAvailMemPtr = (char *)&_heap_start;
+
+    if( nextAvailMemPtr + incr >  (char*)&_heap_end) {
+		write( 2, "Heap overflow!\n", 15 );
+		abort();
+	}
+    prevEnd = nextAvailMemPtr;
+    nextAvailMemPtr += incr;
+    return prevEnd;
+}
+#else
 extern char _end[];
 
 //static char *curbrk = _end;
@@ -489,12 +508,6 @@ void * sbrk( ptrdiff_t incr )
    heap_end += incr;
 
    return (caddr_t) prev_heap_end;
-}
-#else
-void *sbrk(int inc )
-{
-	/* We use our own malloc */
-	return (void *)(-1);
 }
 #endif
 
@@ -539,7 +552,7 @@ void _exit( int status ) {
 	__asm("        .global C$$EXIT");
 	__asm("C$$EXIT: nop");
 #endif
-	while(1);
+	while(1) ;
 }
 #endif
 

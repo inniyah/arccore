@@ -24,6 +24,9 @@
 #include "Port.h"
 #include "mpc55xx.h"
 #include "Det.h"
+#if defined(USE_DEM)
+#include "Dem.h"
+#endif
 #include "Cpu.h"
 #include <string.h>
 /* SHORT ON HW
@@ -91,18 +94,42 @@ void Port_Init(const Port_ConfigType *configType)
 {
   VALIDATE_PARAM_CONFIG(configType, PORT_INIT_ID);
 
-  // Pointers to the register memory areas
-  vuint16_t * padConfig = &(SIU.PCR[0].R);
-  vuint8_t * outConfig = &(SIU.GPDO[0].R);
-//  vuint8_t * inConfig = &(SIU.GPDI[0].R); // Read only
+#if defined(CFG_MPC5606S)
+	vuint16_t i = 0;
+	vuint16_t j = 0;
 
-  // Copy config to register areas
-  memcpy((void *)outConfig, configType->outConfig, configType->outCnt);
-  memcpy((void *)padConfig, configType->padConfig, configType->padCnt);
-  //memcpy((void *)inConfig, configType->inConfig, configType->inCnt);
-  _portState = PORT_INITIALIZED;
-  _configPtr = configType;
-  return;
+	while(i < (configType->padCnt/sizeof(uint16_t)))
+    {
+		SIU.PCR[i].R = configType->padConfig[i];
+    	++i;
+
+    	// Out of reset pins PH[0:3](PCR99~PCR102) are available as JTAG pins(TCK,TDI,TDO and TMS respectively)
+        // TODO: Remove this if JTAG is not used or if the configuration should have priority
+    	if(99 == i || 100 == i || 101 == i || 102 == i) i=103;
+	}
+
+	while(j < configType->outCnt)
+	{
+    	SIU.GPDO[j].B.PDO = configType->outConfig[j];
+    	++j;
+	}
+
+#else
+	// Pointers to the register memory areas
+	vuint16_t * padConfig = &(SIU.PCR[0].R);
+	vuint8_t * outConfig = &(SIU.GPDO[0].R);
+
+	//  vuint8_t * inConfig = &(SIU.GPDI[0].R); // Read only
+	// Copy config to register areas
+	memcpy((void *)outConfig, configType->outConfig, configType->outCnt);
+    memcpy((void *)padConfig, configType->padConfig, configType->padCnt);
+	//memcpy((void *)inConfig, configType->inConfig, configType->inCnt);
+#endif
+
+	_portState = PORT_INITIALIZED;
+	_configPtr = configType;
+
+	return;
 }
 
 #if ( PORT_SET_PIN_DIRECTION_API == STD_ON )
@@ -136,15 +163,22 @@ void Port_RefreshPortDirection( void )
   vuint16_t * pcrPtr = &(SIU.PCR[0].R);
   const uint16_t * padCfgPtr = _configPtr->padConfig;
   uint16_t bitMask = PORT_IBE_ENABLE|PORT_OBE_ENABLE;
-  int i;
+  int i,j=0;
   unsigned long state;
-  for (i=0; i < sizeof(SIU.PCR); i++)
+  for (i=0; i < sizeof(SIU.PCR)/sizeof(SIU.PCR[0]); i++)
   {
     state = _Irq_Disable_save(); // Lock interrupts
     *pcrPtr = (*pcrPtr & ~bitMask) | (*padCfgPtr & bitMask);
     _Irq_Disable_restore(state); // Restore interrups
     pcrPtr++;
     padCfgPtr++;
+    if(98 == i)
+    {
+    	i=103;
+    	pcrPtr = pcrPtr+5;
+    	padCfgPtr = padCfgPtr+5;
+    }
+    j++;
   }
 
   return;

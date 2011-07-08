@@ -148,6 +148,8 @@ Dio_PortLevelType Dio_ReadPort(Dio_PortType portId)
 
 #if defined(CFG_MPC5554)||defined(CFG_MPC5567)
   vuint16_t *ptr = (vuint16_t *)&SIU.GPDI;
+#elif defined(CFG_MPC5606S)
+  vuint16_t *ptr = (vuint16_t *)&SIU.PGPDI;
 #else
   vuint16_t *ptr = (vuint16_t *)&SIU.PGPDI0; // The GPDI 0-3 is organized in 32bit chunks but we want to step them in 16bit port-widths
 #endif
@@ -165,6 +167,8 @@ void Dio_WritePort(Dio_PortType portId, Dio_PortLevelType level)
   // find address of first port
 #if defined(CFG_MPC5554)||defined(CFG_MPC5567)
   vuint16_t *ptr = (vuint16_t *)&SIU.GPDO;
+#elif defined(CFG_MPC5606S)
+  vuint16_t *ptr = (vuint16_t *)&SIU.PGPDO;
 #else
   vuint16_t *ptr = (vuint16_t *)&SIU.PGPDO0; // The GPDO 0-3 is organized in 32bit chunks but we want to step them in 16bit port-widths
 #endif
@@ -184,15 +188,37 @@ Dio_PortLevelType Dio_ReadChannelGroup(
   // find address of first port
 #if defined(CFG_MPC5554)||defined(CFG_MPC5567)
   vuint16_t *ptr = (vuint16_t *)&SIU.GPDI;
+#elif defined(CFG_MPC5606S)
+  uint32 *ptr = (uint32 *)&SIU.PGPDI;
 #else
   uint16 *ptr = (uint16 *)&SIU.PGPDI0; // The GPDI 0-3 is organized in 32bit chunks but we want to step them in 16bit port-widths
 #endif
 
+#if defined(CFG_MPC5606S)
+	if(channelGroupIdPtr->port % 2)
+	{
+		// Get masked values
+		level = ptr[channelGroupIdPtr->port / 2] & channelGroupIdPtr->mask;
+
+		// Shift down
+		level>>=channelGroupIdPtr->offset;
+	}
+	else
+	{
+		// Get masked values
+		level = ptr[channelGroupIdPtr->port / 2] & (channelGroupIdPtr->mask<<16);
+
+		// Shift down
+		level>>=(channelGroupIdPtr->offset + 16);
+	}
+#else
   // Get masked values
   level = ptr[channelGroupIdPtr->port] & channelGroupIdPtr->mask;
 
   // Shift down
   level<<=channelGroupIdPtr->offset;
+#endif
+
 #if ( DIO_DEV_ERROR_DETECT == STD_ON )
   cleanup:
 #endif
@@ -202,6 +228,19 @@ Dio_PortLevelType Dio_ReadChannelGroup(
 void Dio_WriteChannelGroup(const Dio_ChannelGroupType *channelGroupIdPtr,
     Dio_PortLevelType level)
 {
+#if defined(CFG_MPC5606S)
+	VALIDATE_CHANNELGROUP(channelGroupIdPtr,DIO_WRITECHANNELGROUP_ID);
+	// find address of first port of the masked register
+	uint32 *ptr = (uint32 *)&SIU.MPGPDO[0]; // modified by Cobb.The GPDI 0-3 is organized in 32bit chunks but we want to step them in 16bit port-widths
+
+	// Build the 32 bits Mask_Valule, and write to masked output register
+	ptr[channelGroupIdPtr->port] = (vuint32_t)((((vuint32_t)channelGroupIdPtr->mask )<< 16)|((((vuint16_t)level)<<channelGroupIdPtr->offset)&0xFFFF));
+#if ( DIO_DEV_ERROR_DETECT == STD_ON )
+	cleanup:
+#endif
+	return;
+#endif
+
 #if defined(CFG_MPC5516)
   VALIDATE_CHANNELGROUP(channelGroupIdPtr,DIO_WRITECHANNELGROUP_ID);
   // find address of first port of the masked register
@@ -213,8 +252,6 @@ void Dio_WriteChannelGroup(const Dio_ChannelGroupType *channelGroupIdPtr,
 #if ( DIO_DEV_ERROR_DETECT == STD_ON )
   cleanup:
 #endif
-  return;
-#else
   return;
 #endif
 }

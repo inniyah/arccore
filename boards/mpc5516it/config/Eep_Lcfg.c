@@ -14,23 +14,15 @@
  * -------------------------------- Arctic Core ------------------------------*/
 
 
+/* Configured for:
+ *   Microchip 25LC160B (32 bytes pages)
+ */
 
-
-
-
-
-
-
-#warning "This default file may only be used as an example!"
 
 #include "Eep.h"
 #include "Spi.h"
-#include "Spi_Cfg.h"
-
-//#define USE_LDEBUG_PRINTF	1
-#undef DEBUG_LVL
-#define DEBUG_LVL DEBUG_LOW
 #include "debug.h"
+
 
 static void _JobEndNotify(){
 	DEBUG(DEBUG_LOW,"EEP JOB END NOTIFICATION\n");
@@ -39,70 +31,68 @@ static void _JobErrorNotify(){
 	DEBUG(DEBUG_LOW,"EEP JOB ERROR NOTIFICATION\n");
 }
 
+/*
+ * TODO: probably better to
+ */
+#define SPI_SEQ_EEP_CMD		SPI_SEQ_CMD
+#define SPI_SEQ_EEP_CMD2	SPI_SEQ_CMD2
+#define SPI_SEQ_EEP_READ	SPI_SEQ_READ
+#define SPI_SEQ_EEP_WRITE	SPI_SEQ_WRITE
+
+#define SPI_CH_EEP_CMD		SPI_CH_CMD
+#define SPI_CH_EEP_ADDR		SPI_CH_ADDR
+#define SPI_CH_EEP_WREN		SPI_CH_WREN
+#define SPI_CH_EEP_DATA		SPI_CH_DATA
+
+
+const Eep_ExternalDriverType EepExternalDriver = {
+	// READ and WRITE sequences and ID's defined in Spi_Cfg.h
+	.EepCmdSequence = 	SPI_SEQ_EEP_CMD,
+	.EepCmd2Sequence = 	SPI_SEQ_EEP_CMD2,
+	.EepReadSequence = 	SPI_SEQ_EEP_READ,
+	.EepWriteSequence = SPI_SEQ_EEP_WRITE,
+
+	// Jobs may be left out..
+
+	// Channels used
+	.EepCmdChannel	= SPI_CH_EEP_CMD,
+	.EepAddrChannel	= SPI_CH_EEP_ADDR,
+	.EepWrenChannel	= SPI_CH_EEP_WREN,
+	.EepDataChannel	= SPI_CH_EEP_DATA,
+};
+
 const Eep_ConfigType EepConfigData[] = {
     {
-
-		// READ and WRITE sequences and ID's defined in Spi_Cfg.h
-		.EepCmdSequence = SPI_SEQ_EEP_CMD,
-		.EepCmd2Sequence = SPI_SEQ_EEP_CMD2,
-		.EepReadSequence = SPI_SEQ_EEP_READ,
-		.EepWriteSequence = SPI_SEQ_EEP_WRITE,
-
-		// Channels used
-		.EepCmdChannel	= SPI_CH_EEP_CMD,
-		.EepAddrChannel	= SPI_CH_EEP_ADDR,
-		.EepWrenChannel	= SPI_CH_EEP_WREN,
-		.EepDataChannel	= SPI_CH_EEP_DATA,
-
-#if 0
-    .EepCmdJob		= SPI_EEP_CMD_JOB,
-    .EepDataJob		= SPI_EEP_DATA_JOB,
-
-    // Channels used
-    .EepCmdChannel	= SPI_EEP_CMD_CH,
-    .EepAdrChannel	= SPI_EEP_ADR_CH,
-    .EepDataChannel	= SPI_EEP_DATA_CH,
-
-    // READ and WRITE sequences and ID's defined in Spi_Cfg.h
-    .EepReadSequence = SPI_EEP_SEQ_READ,
-    .EepWriteSequence = SPI_EEP_SEQ_WRITE,
-
-    // number of bytes read within one job processing cycle in normal mode.
-    .EepInitConfiguration = 1,
-#endif
-
     // call cycle of the job processing function during write/erase operations. Unit: [s]
-    .EepJobCallCycle = 0.2,
-
-    // This parameter is the used size of EEPROM device in bytes.
-//    .EepSize = 0x8000,
-    .EepSize = 0x2000,
-
-    // This parameter is a reference to a callback function for positive job result
-    .Eep_JobEndNotification = &_JobEndNotify,
+//    .EepJobCallCycle = 0.2,
+    // This parameter is the EEPROM device base address.
+    .EepBaseAddress =  0,
 
     // This parameter is the default EEPROM device mode after initialization.
     .EepDefaultMode = MEMIF_MODE_FAST,
 
-    // Number of bytes read within one job processing cycle in normal mode.
-    .EepNormalReadBlockSize = 4,
-
     // This parameter is the number of bytes read within one job processing cycle in fast mode
     .EepFastReadBlockSize = 64,
-
-    // Number of bytes written within one job processing cycle in normal mode.
-    .EepNormalWriteBlockSize = 1,
 
     // This parameter is the number of bytes written within one job processing cycle in fast mode
     .EepFastWriteBlockSize = 64,
 
+    // This parameter is a reference to a callback function for positive job result
+    .Eep_JobEndNotification = &_JobEndNotify,
+
     // This parameter is a reference to a callback function for negative job result
     .Eep_JobErrorNotification = &_JobErrorNotify,
 
-    // This parameter is the EEPROM page size, i.e. number of bytes.
-    .EepPageSize = 64,
+    .EepNormalReadBlockSize = 4,
 
-    // This parameter is the EEPROM device base address.
-    .EepBaseAddress =  0
+    // Number of bytes written within one job processing cycle in normal mode.
+    .EepNormalWriteBlockSize = 1,
+
+    // This parameter is the used size of EEPROM device in bytes.
+    .EepSize = 0x1000,	/* 32K bit for M9525, 16K bit 25LC160B*/
+
+    .EepPageSize = 64,	/* 64 for M9525, 32 for 25LC160B, 16 for 25LC160A */
+
+    .externalDriver =  &EepExternalDriver,
     }
 };

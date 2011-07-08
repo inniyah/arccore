@@ -11,11 +11,16 @@ CFG=PPC BOOKE E200Z1 MPC55XX MPC5516 BRD_MPC5516IT
 # default or private
 
 # Memory + Peripherals
-MOD_AVAIL+=ADC DIO DMA CAN GPT LIN MCU PORT PWM WDG NVM MEMIF FEE FLS   
+MOD_AVAIL+=ADC DIO DMA CAN GPT LIN MCU PORT PWM WDG NVM MEMIF FEE FLS SPI EEP 
 # System + Communication + Diagnostic
 MOD_AVAIL+=CANIF CANTP COM DCM DEM DET ECUM IOHWAB KERNEL PDUR WDGM RTE
+# Network management
+MOD_AVAIL+=COMM NM CANNM CANSM EA
 # Additional
 MOD_AVAIL+= RAMLOG 
+
+# Required modules
+MOD_USE += MCU KERNEL ECUM DET
 
 # Default cross compiler
 DEFAULT_CROSS_COMPILE = /opt/powerpc-eabispe/bin/powerpc-eabispe-
