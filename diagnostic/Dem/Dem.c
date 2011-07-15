@@ -48,7 +48,7 @@
 //#include "Nvm.h"
 //#include "SchM_Dem.h"
 #include "MemMap.h"
-#include "McuExtensions.h"
+#include "Cpu.h"
 
 /*
  * Local defines
@@ -476,7 +476,8 @@ static Dem_EventStatusType preDebounceCounterBased(Dem_EventStatusType reportedS
 static void updateEventStatusRec(const Dem_EventParameterType *eventParam, Dem_EventStatusType eventStatus, boolean createIfNotExist, EventStatusRecType *eventStatusRec)
 {
 	EventStatusRecType *eventStatusRecPtr;
-	imask_t state = McuE_EnterCriticalSection();
+	imask_t state;
+    Irq_Save(state);
 
 	// Lookup event ID
 	lookupEventStatusRec(eventParam->EventID, &eventStatusRecPtr);
@@ -555,7 +556,7 @@ static void updateEventStatusRec(const Dem_EventParameterType *eventParam, Dem_E
 		eventStatusRec->errorStatusChanged = FALSE;
 	}
 
-	McuE_ExitCriticalSection(state);
+    Irq_Restore(state);
 }
 
 
@@ -566,7 +567,8 @@ static void updateEventStatusRec(const Dem_EventParameterType *eventParam, Dem_E
 static void mergeEventStatusRec(const EventRecType *eventRec)
 {
 	EventStatusRecType *eventStatusRecPtr;
-	imask_t state = McuE_EnterCriticalSection();
+	imask_t state;
+    Irq_Save(state);
 
 	// Lookup event ID
 	lookupEventStatusRec(eventRec->eventId, &eventStatusRecPtr);
@@ -595,7 +597,7 @@ static void mergeEventStatusRec(const EventRecType *eventRec)
 		}
 	}
 
-	McuE_ExitCriticalSection(state);
+    Irq_Restore(state);
 }
 
 
@@ -606,7 +608,8 @@ static void mergeEventStatusRec(const EventRecType *eventRec)
 static void deleteEventStatusRec(const Dem_EventParameterType *eventParam)
 {
 	EventStatusRecType *eventStatusRecPtr;
-	imask_t state = McuE_EnterCriticalSection();
+	imask_t state;
+    Irq_Save(state);
 
 	// Lookup event ID
 	lookupEventStatusRec(eventParam->EventID, &eventStatusRecPtr);
@@ -616,7 +619,7 @@ static void deleteEventStatusRec(const Dem_EventParameterType *eventParam)
 		memset(eventStatusRecPtr, 0, sizeof(EventStatusRecType));
 	}
 
-	McuE_ExitCriticalSection(state);
+    Irq_Restore(state);
 }
 
 
@@ -793,7 +796,8 @@ static void storeExtendedDataPreInit(const Dem_EventParameterType *eventParam, c
 	boolean eventIdFound = FALSE;
 	boolean eventIdFreePositionFound=FALSE;
 	uint16 i;
-	imask_t state = McuE_EnterCriticalSection();
+	imask_t state;
+    Irq_Save(state);
 
 	// Check if already stored
 	for (i = 0; (i<DEM_MAX_NUMBER_EXT_DATA_PRE_INIT) && (!eventIdFound); i++){
@@ -821,7 +825,7 @@ static void storeExtendedDataPreInit(const Dem_EventParameterType *eventParam, c
 		}
 	}
 
-	McuE_ExitCriticalSection(state);
+    Irq_Restore(state);
 }
 
 /*
@@ -834,7 +838,8 @@ static void storeEventPriMem(const Dem_EventParameterType *eventParam, const Eve
 	boolean eventIdFound = FALSE;
 	boolean eventIdFreePositionFound=FALSE;
 	uint16 i;
-	imask_t state = McuE_EnterCriticalSection();
+	imask_t state;
+    Irq_Save(state);
 
 	(void)*eventParam;	// Currently not used, do this to avoid warning
 
@@ -866,7 +871,7 @@ static void storeEventPriMem(const Dem_EventParameterType *eventParam, const Eve
 		}
 	}
 
-	McuE_ExitCriticalSection(state);
+    Irq_Restore(state);
 }
 
 /*
@@ -877,7 +882,8 @@ static void deleteEventPriMem(const Dem_EventParameterType *eventParam)
 {
 	boolean eventIdFound = FALSE;
 	uint16 i;
-	imask_t state = McuE_EnterCriticalSection();
+	imask_t state;
+    Irq_Save(state);
 
 
 	// Lookup event ID
@@ -890,7 +896,7 @@ static void deleteEventPriMem(const Dem_EventParameterType *eventParam)
 		memset(&priMemEventBuffer[i-1], 0, sizeof(EventRecType));
 	}
 
-	McuE_ExitCriticalSection(state);
+    Irq_Restore(state);
 }
 
 /*
@@ -933,7 +939,8 @@ static void storeExtendedDataPriMem(const Dem_EventParameterType *eventParam, co
 	boolean eventIdFound = FALSE;
 	boolean eventIdFreePositionFound=FALSE;
 	uint16 i;
-	imask_t state = McuE_EnterCriticalSection();
+	imask_t state;
+    Irq_Save(state);
 
 	// Check if already stored
 	for (i = 0; (i<DEM_MAX_NUMBER_EXT_DATA_PRI_MEM) && (!eventIdFound); i++){
@@ -958,7 +965,7 @@ static void storeExtendedDataPriMem(const Dem_EventParameterType *eventParam, co
 		}
 	}
 
-	McuE_ExitCriticalSection(state);
+    Irq_Restore(state);
 }
 
 /*
@@ -969,7 +976,8 @@ static void deleteExtendedDataPriMem(const Dem_EventParameterType *eventParam)
 {
 	boolean eventIdFound = FALSE;
 	uint16 i;
-	imask_t state = McuE_EnterCriticalSection();
+	imask_t state;
+    Irq_Save(state);
 
 	// Check if already stored
 	for (i = 0;(i<DEM_MAX_NUMBER_EXT_DATA_PRI_MEM) && (!eventIdFound); i++){
@@ -981,7 +989,7 @@ static void deleteExtendedDataPriMem(const Dem_EventParameterType *eventParam)
 		memset(&priMemExtDataBuffer[i-1], 0, sizeof(ExtDataRecType));
 	}
 
-	McuE_ExitCriticalSection(state);
+    Irq_Restore(state);
 }
 
 /*
@@ -1232,15 +1240,16 @@ static Std_ReturnType handleEvent(Dem_EventIdType eventId, Dem_EventStatusType e
  */
 static void resetEventStatus(Dem_EventIdType eventId)
 {
-	imask_t state = McuE_EnterCriticalSection();
 	EventStatusRecType *eventStatusRecPtr;
+	imask_t state;
+    Irq_Save(state);
 
 	lookupEventStatusRec(eventId, &eventStatusRecPtr);
 	if (eventStatusRecPtr != NULL) {
 		eventStatusRecPtr->eventStatusExtended &= (Dem_EventStatusExtendedType)~DEM_TEST_FAILED; /** @req DEM187 */
 	}
 
-	McuE_ExitCriticalSection(state);
+    Irq_Restore(state);
 }
 
 
