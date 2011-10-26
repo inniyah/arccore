@@ -80,10 +80,23 @@ static const Adc_ConfigType *AdcConfigPtr;
 /* VALIDATION MACROS */
 
 
+
+
 #if (ADC_DEINIT_API == STD_ON)
 Std_ReturnType Adc_DeInit (const Adc_ConfigType *ConfigPtr)
 {
   ADC_VALIDATE_INITIALIZED( ADC_DEINIT_ID, E_NOT_OK );
+#if ( ADC_DEV_ERROR_DETECT == STD_ON )
+	for (Adc_GroupType group = ADC_GROUP0; group < AdcConfigPtr->nbrOfGroups; group++)
+	{
+		/*  Check ADC is IDLE or COMPLETE*/
+		if((AdcConfigPtr->groupConfigPtr[group].status->groupStatus != ADC_IDLE) && (AdcConfigPtr->groupConfigPtr[group].status->groupStatus != ADC_STREAM_COMPLETED))
+		{
+			Det_ReportError(MODULE_ID_ADC,0,ADC_DEINIT_ID, ADC_E_BUSY );
+			return E_NOT_OK;
+		}
+	}
+#endif
 
   DMA_DeInit(DMA1_Channel1);
   ADC_DeInit(ADC1);
