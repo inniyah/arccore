@@ -19,14 +19,13 @@
 #include "Modules.h"
 #include <string.h>
 #include <Os.h>
-#include "isr.h"
 #include "EcuM_Internals.h"
 #include "EcuM_Cbk.h"
 #include "Mcu.h"
 #include "Det.h"
 #include "isr.h"
 #if defined(USE_NVM)
-#include "Nvm.h"
+#include "NvM.h"
 #endif
 #if defined(USE_RTE)
 #include "Rte_Main.h"
@@ -83,7 +82,10 @@ void EcuM_Init( void )
 
 	// Start this baby up
 	AppModeType appMode;
-	EcuM_GetApplicationMode(&appMode);
+	status = EcuM_GetApplicationMode(&appMode);
+	if(status!=E_OK){
+		//TODO: Report error.
+	}
 	StartOS(appMode); /** @req EcuM2141 */
 }
 
@@ -129,10 +131,10 @@ void EcuM_StartupTwo(void)
 			Det_ReportError(MODULE_ID_ECUM, 0, ECUM_ARC_STARTUPTWO_ID, ECUM_E_ARC_TIMERERROR);
 		}
 	} while( (readAllResult == NVM_REQ_PENDING) && (tickTimerElapsed < internal_data.config->EcuMNvramReadAllTimeout) );
+#endif
 
 	// Initialize drivers that need NVRAM data
 	EcuM_AL_DriverInitThree(internal_data.config);
-#endif
 
 	// TODO: Indicate mode change to RTE
 

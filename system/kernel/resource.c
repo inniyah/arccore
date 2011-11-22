@@ -144,9 +144,11 @@ StatusType GetResource( ResourceType ResID ) {
 
 #if	(OS_APPLICATION_CNT > 1)
 
-	rv = Os_ApplHaveAccess( Os_ResourceGet(ResID)->accessingApplMask );
-	if( rv != E_OK ) {
-		goto err;
+	if (ResID != RES_SCHEDULER) {
+		rv = Os_ApplHaveAccess( Os_ResourceGet(ResID)->accessingApplMask );
+		if( rv != E_OK ) {
+			goto err;
+		}
 	}
 
 #endif
@@ -283,7 +285,7 @@ void Os_ResourceGetInternal( void ) {
 
 	if( rt != NULL ) {
 		OS_DEBUG(D_RESOURCE,"Get IR proc:%s prio:%u old_task_prio:%u\n",
-				Os_SysTaskGetCurr()->name,
+				Os_SysTaskGetCurr()->constPtr->name,
 				(unsigned)rt->ceiling_priority,
 				(unsigned)rt->old_task_prio);
 		Os_TaskResourceAdd(rt,pcbPtr);
@@ -296,7 +298,7 @@ void Os_ResourceReleaseInternal( void ) {
 
 	if(  rt != NULL ) {
 		OS_DEBUG(D_RESOURCE,"Rel IR proc:%s prio:%u old_task_prio:%u\n",
-				Os_SysTaskGetCurr()->name,
+				Os_SysTaskGetCurr()->constPtr->name,
 				(unsigned)rt->ceiling_priority,
 				(unsigned)rt->old_task_prio);
 		Os_TaskResourceRemove(rt,pcbPtr);

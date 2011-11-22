@@ -16,10 +16,15 @@
 
 // 904 PC-Lint MISRA 14.7: OK. Allow VALIDATE_ENTITY_ID, VALIDATE and VALIDATE_NO_RETURNVAL to return value.
 //lint -emacro(904,VALIDATE_ENTITY_ID,VALIDATE,VALIDATE_NO_RETURNVAL)
+// lint -emacro(750,WDGM_REPORT_ERROR) //PC-Lint exception. Is used if Gpt is activated and no Gpt is available.
 
 #include "WdgM.h"
 #include "WdgIf.h"
 #include "Det.h"
+
+#if (WDGM_DEV_ERROR_DETECT == STD_ON)
+#define WDGM_REPORT_ERROR(_api,_errorcode) \
+	Det_ReportError(MODULE_ID_WDGM,0,_api,_errorcode );
 
 #define VALIDATE_ENTITY_ID(_SEId, _api) \
 	if(_SEId >= WDGM_NBR_OF_ALIVE_SIGNALS) {	\
@@ -40,6 +45,13 @@
 		Det_ReportError(MODULE_ID_WDGM,0,_api,_errorcode ); \
 		return;	\
 		}
+#else
+#define WDGM_REPORT_ERROR(_api,_errorcode)
+#define VALIDATE_ENTITY_ID(_SEId, _api)
+#define VALIDATE(_expr, _api, _errorcode)
+#define VALIDATE_NO_RETURNVAL(_expr, _api, _errorcode)
+#endif
+
 struct
 {
 	const WdgM_ConfigType           *WdgM_ConfigPtr;
@@ -116,7 +128,7 @@ Std_ReturnType WdgM_DeactivateAliveSupervision (WdgM_SupervisedEntityIdType SEid
   /** @req WDGM082 **/
   /** @req WDGM174 **/
   /** @req WDGM108 **/
-  VALIDATE((supervisedEntityPtr->WdgM_DeactivationAccessEnabled != 0), WDGM_DEACTIVATEALIVESUPERVISION_ID, WDGM_E_DEACTIVATE_NOT_ALLOWED);
+  VALIDATE((supervisedEntityPtr[SEid].WdgM_DeactivationAccessEnabled != 0), WDGM_DEACTIVATEALIVESUPERVISION_ID, WDGM_E_DEACTIVATE_NOT_ALLOWED);
 
   /** @req WDGM114 **/
   if (WDGM_ALIVE_EXPIRED > entityStatePtr->SupervisionStatus)
@@ -163,9 +175,10 @@ Std_ReturnType WdgM_SetMode(WdgM_ModeType Mode)
   /** @req WDGM020 **/
   VALIDATE(((Mode >= 0) && (Mode < WDGM_NBR_OF_MODES)), WDGM_SETMODE_ID, WDGM_E_PARAM_MODE);
 
-#if WDGM_OFF_MODE_ENABLED == STD_OFF
   const WdgM_ModeConfigType * modeConfigPtr = &wdgMInternalState.WdgM_ConfigPtr->WdgM_ConfigSet->WdgM_Mode[Mode];
   const WdgM_ModeConfigType * oldModeConfigPtr = &wdgMInternalState.WdgM_ConfigPtr->WdgM_ConfigSet->WdgM_Mode[wdgMInternalState.WdgMActiveMode];
+
+#if WDGM_OFF_MODE_ENABLED == STD_OFF
     /** @req WDGM031 **/
   VALIDATE((modeConfigPtr->WdgM_Trigger->WdgM_WatchdogMode != WDGIF_OFF_MODE),WDGM_SETMODE_ID, WDGM_E_DISABLE_NOT_ALLOWED);
 #endif
@@ -183,10 +196,14 @@ Std_ReturnType WdgM_SetMode(WdgM_ModeType Mode)
 		  /** @req WDGM188 **/
 		  if (modeConfigPtr->WdgM_Activation.WdgM_IsGPTActivated)
 		  {
-			  const WdgM_ActivationGPTType * gptConfigPtr = &modeConfigPtr->WdgM_Activation.WdgM_ActivationGPT;
-			  /* New mode is activated from GPT callback. Start GPT. */
-			  Gpt_StartTimer(gptConfigPtr->WdgM_GptChannelRef, gptConfigPtr->WdgM_GptCycle);
-			  Gpt_EnableNotification(gptConfigPtr->WdgM_GptChannelRef);
+			  #if WDGM_GPT_USED == STD_ON
+				  const WdgM_ActivationGPTType * gptConfigPtr = &modeConfigPtr->WdgM_Activation.WdgM_ActivationGPT;
+				  /* New mode is activated from GPT callback. Start GPT. */
+				  Gpt_StartTimer(gptConfigPtr->WdgM_GptChannelRef, gptConfigPtr->WdgM_GptCycle);
+				  Gpt_EnableNotification(gptConfigPtr->WdgM_GptChannelRef);
+			  #else
+				  WDGM_REPORT_ERROR( WDGM_SETMODE_ID, WDGM_E_PARAM_MODE );
+			  #endif
 		  }
 		  /** @req WDGM187 **/
 		  else
@@ -194,10 +211,14 @@ Std_ReturnType WdgM_SetMode(WdgM_ModeType Mode)
 			  /* Only if a mode already have been configured. */
 			  if (wdgMInternalState.WdgMModeConfigured)
 			  {
-				  /* Old mode was GPT driven, but not new mode. Disable GPT. */
-				  const WdgM_ActivationGPTType * oldGptConfigPtr = &oldModeConfigPtr->WdgM_Activation.WdgM_ActivationGPT;
-				  Gpt_DisableNotification(oldGptConfigPtr->WdgM_GptChannelRef);
-				  Gpt_StopTimer(oldGptConfigPtr->WdgM_GptChannelRef);
+				  #if WDGM_GPT_USED == STD_ON
+					  /* Old mode was GPT driven, but not new mode. Disable GPT. */
+					  const WdgM_ActivationGPTType * oldGptConfigPtr = &oldModeConfigPtr->WdgM_Activation.WdgM_ActivationGPT;
+					  Gpt_DisableNotification(oldGptConfigPtr->WdgM_GptChannelRef);
+					  Gpt_StopTimer(oldGptConfigPtr->WdgM_GptChannelRef);
+				  #else
+				  	  WDGM_REPORT_ERROR( WDGM_SETMODE_ID, WDGM_E_PARAM_MODE );
+				  #endif
 			  }
 			  else
 			  {
@@ -253,6 +274,7 @@ void WdgM_Init(const WdgM_ConfigType *ConfigPtr)
   /** @req WDGM010 **/
   VALIDATE_NO_RETURNVAL((ConfigPtr != 0),WDGM_INIT_ID, WDGM_E_PARAM_CONFIG);
   wdgMInternalState.WdgM_ConfigPtr = ConfigPtr;
+
   initialMode = wdgMInternalState.WdgM_ConfigPtr->WdgM_ConfigSet->WdgM_InitialMode;
   modeConfigPtr = &wdgMInternalState.WdgM_ConfigPtr->WdgM_ConfigSet->WdgM_Mode[initialMode];
 
@@ -279,7 +301,7 @@ void WdgM_Init(const WdgM_ConfigType *ConfigPtr)
   }
 
   /* Start initial mode. Raise error if initial mode was not entered properly. */
-  VALIDATE_NO_RETURNVAL((WdgM_SetMode(initialMode) != E_OK),WDGM_INIT_ID, WDGM_E_PARAM_CONFIG);
+  VALIDATE_NO_RETURNVAL((WdgM_SetMode(initialMode) == E_OK),WDGM_INIT_ID, WDGM_E_PARAM_CONFIG);
 
   wdgMInternalState.WdgM_GlobalSupervisionStatus = WDGM_ALIVE_OK;
   wdgMInternalState.WdgMActiveMode = initialMode;

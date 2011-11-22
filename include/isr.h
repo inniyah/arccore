@@ -223,7 +223,11 @@ void TailChaining(void *stack);
 #endif
 
 static inline const OsIsrVarType *Os_IsrGet( ISRType id ) {
+#if OS_ISR_CNT != 0
 	return &Os_IsrVarList[id];
+#else
+	return NULL;
+#endif
 }
 
 static inline ApplicationType Os_IsrGetApplicationOwner( ISRType id ) {

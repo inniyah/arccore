@@ -24,10 +24,10 @@
 
 #if PDUR_ZERO_COST_OPERATION == STD_OFF
 
-Std_ReturnType PduR_ARC_RouteTransmit(const PduRDestPdu_type * destination, const PduInfoType * PduInfo);
+Std_ReturnType PduR_ARC_RouteTransmit(const PduRDestPdu_type * destination, const PduInfoType * pduInfo);
 void PduR_ARC_RouteRxIndication(const PduRDestPdu_type * destination, const PduInfoType *PduInfo);
 void PduR_ARC_RouteTxConfirmation(const PduRRoutingPath_type *route, uint8 result);
-Std_ReturnType PduR_ARC_RouteTriggerTransmit(const PduRRoutingPath_type *route, PduInfoType * PduInfo);
+Std_ReturnType PduR_ARC_RouteTriggerTransmit(const PduRRoutingPath_type *route, PduInfoType * pduInfo);
 BufReq_ReturnType PduR_ARC_RouteProvideRxBuffer(const PduRDestPdu_type * destination, PduLengthType TpSduLength, PduInfoType** PduInfoPtr);
 BufReq_ReturnType PduR_ARC_RouteProvideTxBuffer(const PduRRoutingPath_type *route, PduLengthType TpSduLength, PduInfoType** PduInfoPtr);
 
@@ -38,6 +38,14 @@ void PduR_ARC_TxConfirmation(PduIdType PduId, uint8 result, uint8 serviceId);
 Std_ReturnType PduR_ARC_TriggerTransmit(PduIdType PduId, PduInfoType* PduInfo, uint8 serviceId);
 BufReq_ReturnType PduR_ARC_ProvideRxBuffer(PduIdType PduId, PduLengthType TpSduLength, PduInfoType** PduInfoPtr, uint8 serviceId);
 BufReq_ReturnType PduR_ARC_ProvideTxBuffer(PduIdType PduId, PduInfoType** PduInfoPtr, uint16 Length, uint8 serviceId);
+
+// Prototypes for functions used locally in file PduR_Logic.c (prototypes needed to remove lint errors)
+BufReq_ReturnType PduR_ARC_AllocateRxBuffer(PduIdType PduId, PduLengthType TpSduLength);
+BufReq_ReturnType PduR_ARC_AllocateTxBuffer(PduIdType PduId, uint16 length);
+BufReq_ReturnType PduR_ARC_ReleaseRxBuffer(PduIdType PduId);
+BufReq_ReturnType PduR_ARC_ReleaseTxBuffer(PduIdType PduId);
+void PduR_ARC_RxIndicationDirect(const PduRDestPdu_type * destination, const PduInfoType *PduInfo);
+void PduR_ARC_RxIndicationTT(const PduRDestPdu_type * destination, const PduInfoType *PduInfo, uint16 BufferLength);
 
 #endif
 

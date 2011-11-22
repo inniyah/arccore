@@ -11,7 +11,6 @@ ARCH_MCU=arm_cm3
 CFG=ARM ARM_CM3
 # Add our board  
 CFG+=BRD_STM32_STM3210C 
-CFG+=STM32
 
 # 
 # ST have devided devices into ( See chapter 6 in Ref manual )
@@ -29,7 +28,7 @@ CFG+=STM32_CL
 # MCAL
 MOD_AVAIL+=ADC CAN DIO MCU FLS PORT PWM GPT   
 # System + Communication + Diagnostic
-MOD_AVAIL+=CANIF CANTP COM DCM DEM DET ECUM IOHWAB KERNEL PDUR WDGM RTE
+MOD_AVAIL+=CANIF CANTP J1939TP COM DCM DEM DET ECUM IOHWAB KERNEL PDUR WDGM RTE
 # Network management
 MOD_AVAIL+=COMM NM CANNM CANSM
 # Additional

@@ -14,7 +14,7 @@
  * -------------------------------- Arctic Core ------------------------------*/
 
 
-
+//lint -esym(960,8.7)	PC-Lint misunderstanding of Misra 8.7 for Com_SystenEndianness and endianess_test
 
 
 
@@ -29,10 +29,11 @@
 #include "Com_Internal.h"
 #include "Com_misc.h"
 #include "debug.h"
+#include "Cpu.h"
 
 
 /* TODO: Better way to get endianness across all compilers? */
-static const uint32_t endianness_test = 0xdeadbeef;
+static const uint32_t endianness_test = 0xdeadbeefU;
 ComSignalEndianess_type Com_SystemEndianness;
 
 
@@ -49,11 +50,13 @@ void Com_Init(const Com_ConfigType *config ) {
 	uint32 earliestDeadline;
 	uint32 firstTimeout;
 
+	//lint --e(928)	PC-Lint exception Misra 11.4, Must be like this. /tojo
 	uint8 endiannessByte = *(const uint8 *)&endianness_test;
 	if      ( endiannessByte == 0xef ) { Com_SystemEndianness = COM_LITTLE_ENDIAN; }
 	else if ( endiannessByte == 0xde ) { Com_SystemEndianness = COM_BIG_ENDIAN; }
 	else {
 		// No other endianness supported
+		//lint --e(506)	PC-Lint exception Misra 13.7, 14.1, Allow boolean to always be false.
 		assert(0);
 	}
 
@@ -163,7 +166,10 @@ void Com_Init(const Com_ConfigType *config ) {
 			}
 		}
 	}
-
+	for (uint16 i = 0; i < COM_N_IPDUS; i++) {
+		Com_BufferPduState[i].currentPosition = 0;
+		Com_BufferPduState[i].locked = false;
+	}
 
 	// An error occurred.
 	if (failure) {
@@ -194,4 +200,77 @@ void Com_IpduGroupStop(Com_PduGroupIdType IpduGroupId) {
 			Com_Arc_Config.ComIPdu[i].Com_Arc_IpduStarted = 0;
 		}
 	}
+}
+
+/**
+ *
+ * @param PduId
+ * @param PduInfoPtr
+ * @param RetryInfoPtr not supported
+ * @param TxDataCntPtr
+ * @return
+ */
+BufReq_ReturnType Com_CopyTxData(PduIdType PduId, PduInfoType* PduInfoPtr, RetryInfoType* RetryInfoPtr, PduLengthType* TxDataCntPtr) {
+	imask_t state;
+	Irq_Save(state);
+	BufReq_ReturnType r = BUFREQ_OK;
+	const ComIPdu_type *IPdu = GET_IPdu(PduId);
+	boolean dirOk = ComConfig->ComIPdu[PduId].ComIPduDirection == SEND;
+	boolean sizeOk = IPdu->ComIPduSize >= Com_BufferPduState[PduId].currentPosition + PduInfoPtr->SduLength;
+	Com_BufferPduState[PduId].locked = true;
+	if (dirOk && sizeOk) {
+		void* source = GET_ArcIPdu(PduId)->ComIPduDataPtr;
+		memcpy(PduInfoPtr->SduDataPtr,source + Com_BufferPduState[PduId].currentPosition, PduInfoPtr->SduLength);
+		Com_BufferPduState[PduId].currentPosition += PduInfoPtr->SduLength;
+		*TxDataCntPtr = IPdu->ComIPduSize - Com_BufferPduState[PduId].currentPosition;
+	} else {
+		r = BUFREQ_NOT_OK;
+	}
+	Irq_Restore(state);
+	return r;
+}
+BufReq_ReturnType Com_CopyRxData(PduIdType PduId, const PduInfoType* PduInfoPtr, PduLengthType* RxBufferSizePtr) {
+	imask_t state;
+	Irq_Save(state);
+	BufReq_ReturnType r = BUFREQ_OK;
+	uint8 remainingBytes = GET_IPdu(PduId)->ComIPduSize - Com_BufferPduState[PduId].currentPosition;
+	boolean sizeOk = remainingBytes >= PduInfoPtr->SduLength;
+	boolean dirOk = GET_IPdu(PduId)->ComIPduDirection == RECEIVE;
+	boolean lockOk = isPduBufferLocked(PduId);
+	if (dirOk && lockOk && sizeOk) {
+		memcpy(GET_ArcIPdu(PduId)->ComIPduDataPtr+Com_BufferPduState[PduId].currentPosition, PduInfoPtr->SduDataPtr, PduInfoPtr->SduLength);
+		Com_BufferPduState[PduId].currentPosition += PduInfoPtr->SduLength;
+		*RxBufferSizePtr = GET_IPdu(PduId)->ComIPduSize - Com_BufferPduState[PduId].currentPosition;
+	} else {
+		r = BUFREQ_NOT_OK;
+	}
+	return r;
+	Irq_Restore(state);
+}
+BufReq_ReturnType Com_StartOfReception(PduIdType ComRxPduId, PduLengthType TpSduLength, PduLengthType* RxBufferSizePtr) {
+	PduLengthType ComIPduSize;
+	imask_t state;
+	Irq_Save(state);
+	BufReq_ReturnType r = BUFREQ_OK;
+	Com_Arc_IPdu_type *Arc_IPdu = GET_ArcIPdu(ComRxPduId);
+	if (Arc_IPdu->Com_Arc_IpduStarted) {
+		if (GET_IPdu(ComRxPduId)->ComIPduDirection == RECEIVE) {
+			if (!Com_BufferPduState[ComRxPduId].locked) {
+				ComIPduSize = GET_IPdu(ComRxPduId)->ComIPduSize;
+				if (ComIPduSize >= TpSduLength) {
+					Com_BufferPduState[ComRxPduId].locked = true;
+					*RxBufferSizePtr = ComIPduSize;
+					Com_BufferPduState[ComRxPduId].locked = true;
+				} else {
+					r = BUFREQ_OVFL;
+				}
+			} else {
+				r = BUFREQ_BUSY;
+			}
+		}
+	} else {
+		r = BUFREQ_NOT_OK;
+	}
+	Irq_Restore(state);
+	return r;
 }

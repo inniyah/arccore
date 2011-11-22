@@ -14,7 +14,7 @@
  * -------------------------------- Arctic Core ------------------------------*/
 
 
-
+//lint -esym(960,8.7)	PC-Lint misunderstanding of Misra 8.7 for Com_SystenEndianness and endianess_test
 
 
 
@@ -31,6 +31,8 @@
 #include "Det.h"
 #include "Cpu.h"
 
+Com_BufferPduStateType Com_BufferPduState[COM_N_IPDUS];
+
 
 uint8 Com_SendSignal(Com_SignalIdType SignalId, const void *SignalDataPtr) {
 	VALIDATE_SIGNAL(SignalId, 0x0a, E_NOT_OK);
@@ -40,6 +42,9 @@ uint8 Com_SendSignal(Com_SignalIdType SignalId, const void *SignalDataPtr) {
 	const ComIPdu_type *IPdu = GET_IPdu(Arc_Signal->ComIPduHandleId);
 	Com_Arc_IPdu_type *Arc_IPdu = GET_ArcIPdu(Arc_Signal->ComIPduHandleId);
 
+	if (isPduBufferLocked(getPduId(IPdu))) {
+		return COM_BUSY;
+	}
 	//DEBUG(DEBUG_LOW, "Com_SendSignal: id %d, nBytes %d, BitPosition %d, intVal %d\n", SignalId, nBytes, signal->ComBitPosition, (uint32)*(uint8 *)SignalDataPtr);
 
 	// TODO: CopyData
@@ -63,6 +68,13 @@ uint8 Com_SendSignal(Com_SignalIdType SignalId, const void *SignalDataPtr) {
 uint8 Com_ReceiveSignal(Com_SignalIdType SignalId, void* SignalDataPtr) {
 	VALIDATE_SIGNAL(SignalId, 0x0b, E_NOT_OK);
 	DEBUG(DEBUG_LOW, "Com_ReceiveSignal: SignalId %d\n", SignalId);
+
+	const ComSignal_type * Signal = GET_Signal(SignalId);
+	Com_Arc_Signal_type * Arc_Signal = GET_ArcSignal(Signal->ComHandleId);
+	const ComIPdu_type *IPdu = GET_IPdu(Arc_Signal->ComIPduHandleId);
+	if (isPduBufferLocked(getPduId(IPdu))) {
+		return COM_BUSY;
+	}
 
 	// Com_CopyFromSignal(&ComConfig->ComSignal[SignalId], SignalDataPtr);
 	Com_ReadSignalDataFromPdu(SignalId, SignalDataPtr);
@@ -104,6 +116,7 @@ void Com_TriggerIPduSend(PduIdType ComTxPduId) {
 
         imask_t state;
 
+        //lint --e(725)	Suppress PC-Lint warning "Expected positive indentation...". What means?
         Irq_Save(state);
 		// Check callout status
 		if (IPdu->ComIPduCallout != NULL) {
@@ -128,6 +141,8 @@ void Com_TriggerIPduSend(PduIdType ComTxPduId) {
 					CLEARBIT(Arc_IPdu->ComIPduDataPtr, IPdu->ComIPduSignalRef[i]->ComUpdateBitPosition);
 				}
 			}
+		} else {
+			UnlockTpBuffer(getPduId(IPdu));
 		}
 	    Irq_Restore(state);
 
@@ -163,43 +178,43 @@ void Com_RxIndication(PduIdType ComRxPduId, const PduInfoType* PduInfoPtr) {
 	// Copy IPDU data
 	memcpy(Arc_IPdu->ComIPduDataPtr, PduInfoPtr->SduDataPtr, IPdu->ComIPduSize);
 
-	// For each signal.
-	const ComSignal_type *comSignal;
-	for (uint8 i = 0; IPdu->ComIPduSignalRef[i] != NULL; i++) {
-		comSignal = IPdu->ComIPduSignalRef[i];
-		Com_Arc_Signal_type * Arc_Signal = GET_ArcSignal(comSignal->ComHandleId);
-
-		// If this signal uses an update bit, then it is only considered if this bit is set.
-		if ( (!comSignal->ComSignalArcUseUpdateBit) ||
-			( (comSignal->ComSignalArcUseUpdateBit) && (TESTBIT(Arc_IPdu->ComIPduDataPtr, comSignal->ComUpdateBitPosition)) ) ) {
-
-			if (comSignal->ComTimeoutFactor > 0) { // If reception deadline monitoring is used.
-				// Reset the deadline monitoring timer.
-				Arc_Signal->Com_Arc_DeadlineCounter = comSignal->ComTimeoutFactor;
-			}
-
-			// Check the signal processing mode.
-			if (IPdu->ComIPduSignalProcessing == IMMEDIATE) {
-				// If signal processing mode is IMMEDIATE, notify the signal callback.
-				if (IPdu->ComIPduSignalRef[i]->ComNotification != NULL) {
-					IPdu->ComIPduSignalRef[i]->ComNotification();
-				}
-
-			} else {
-				// Signal processing mode is DEFERRED, mark the signal as updated.
-				Arc_Signal->ComSignalUpdated = 1;
-			}
-
-		} else {
-			DEBUG(DEBUG_LOW, "Com_RxIndication: Ignored signal %d of I-PD %d since its update bit was not set\n", comSignal->ComHandleId, ComRxPduId);
-		}
-	}
+	Com_RxProcessSignals(IPdu,Arc_IPdu);
 
 	return;
 }
 
+void Com_TpRxIndication(PduIdType PduId, NotifResultType Result) {
+	PDU_ID_CHECK(PduId, 0x14);
+
+	const ComIPdu_type *IPdu = GET_IPdu(PduId);
+	Com_Arc_IPdu_type *Arc_IPdu = GET_ArcIPdu(PduId);
+
+	// If Ipdu is stopped
+	if (!Arc_IPdu->Com_Arc_IpduStarted) {
+		return;
+	}
+	// unlock buffer
+	imask_t state;
+	Irq_Save(state);
+	UnlockTpBuffer(getPduId(IPdu));
+	Irq_Restore(state);
+
+	if (Result == NTFRSLT_OK) {
+		Com_RxProcessSignals(IPdu,Arc_IPdu);
+	}
+}
+void Com_TpTxConfirmation(PduIdType PduId, NotifResultType Result) {
+	PDU_ID_CHECK(PduId, 0x15);
+	const ComIPdu_type *IPdu = GET_IPdu(PduId);
+
+	imask_t state;
+	Irq_Save(state);
+	UnlockTpBuffer(getPduId(IPdu));
+	Irq_Restore(state);
+}
 void Com_TxConfirmation(PduIdType ComTxPduId) {
 	PDU_ID_CHECK(ComTxPduId, 0x15);
+
 	(void)ComTxPduId; // Nothing to be done. This is just to avoid Lint warning.
 }
 
@@ -211,6 +226,9 @@ Std_ReturnType Com_SendSignalGroup(Com_SignalGroupIdType SignalGroupId) {
 	Com_Arc_IPdu_type *Arc_IPdu = GET_ArcIPdu(Arc_Signal->ComIPduHandleId);
 	const ComIPdu_type *IPdu = GET_IPdu(Arc_Signal->ComIPduHandleId);
 
+	if (isPduBufferLocked(getPduId(IPdu))) {
+		return COM_BUSY;
+	}
 
 	// Copy shadow buffer to Ipdu data space
 	const ComGroupSignal_type *groupSignal;
@@ -241,7 +259,11 @@ Std_ReturnType Com_ReceiveSignalGroup(Com_SignalGroupIdType SignalGroupId) {
 //#warning Com_ReceiveSignalGroup should be performed atomically. Should we disable interrupts here?
 	const ComSignal_type * Signal = GET_Signal(SignalGroupId);
 	Com_Arc_Signal_type * Arc_Signal = GET_ArcSignal(SignalGroupId);
+	const ComIPdu_type *IPdu = GET_IPdu(Arc_Signal->ComIPduHandleId);
 
+	if (isPduBufferLocked(getPduId(IPdu))) {
+		return COM_BUSY;
+	}
 	// Copy Ipdu data buffer to shadow buffer.
 	const ComGroupSignal_type *groupSignal;
 	for (uint8 i = 0; Signal->ComGroupSignal[i] != NULL; i++) {
@@ -265,7 +287,11 @@ void Com_UpdateShadowSignal(Com_SignalIdType SignalId, const void *SignalDataPtr
 
 void Com_ReceiveShadowSignal(Com_SignalIdType SignalId, void *SignalDataPtr) {
 	Com_Arc_GroupSignal_type *Arc_GroupSignal = GET_ArcGroupSignal(SignalId);
+	uint8 pduSize = GET_IPdu(GET_ArcSignal(SignalId)->ComIPduHandleId)->ComIPduSize;
 	// TODO: CopyData
 	// Com_CopyData(SignalDataPtr, Arc_GroupSignal->Com_Arc_ShadowBuffer, GroupSignal->ComBitSize, 0, GroupSignal->ComBitPosition);
-	Com_ReadSignalDataFromPduBuffer(SignalId, TRUE, SignalDataPtr, (void *)Arc_GroupSignal->Com_Arc_ShadowBuffer);
+	Com_ReadSignalDataFromPduBuffer(SignalId, TRUE, SignalDataPtr, (void *)Arc_GroupSignal->Com_Arc_ShadowBuffer,pduSize);
 }
+
+
+
