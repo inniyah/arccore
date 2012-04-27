@@ -62,7 +62,7 @@ typedef struct
 	uint8 sleep_mode;
 	AppModeType app_mode;
 	EcuM_StateType current_state;
-#if defined(USE_COMM)
+#if defined(USE_COMM) || (USE_ECUM_COMM)
 	uint32 run_comm_requests;
 #endif
 	uint32 run_requests;
@@ -72,5 +72,18 @@ typedef struct
 extern EcuM_GlobalType internal_data;
 
 void EcuM_enter_run_mode(void);
+
+#ifdef CFG_ECUM_USE_SERVICE_COMPONENT
+void set_current_state(EcuM_StateType state);
+#else
+#define set_current_state(state) internal_data.current_state = (state)
+#endif
+
+void EcuM_AL_DriverInitZero(void);
+EcuM_ConfigType* EcuM_DeterminePbConfiguration(void);
+void EcuM_AL_DriverInitOne(const EcuM_ConfigType* ConfigPtr);
+void EcuM_AL_DriverInitTwo(const EcuM_ConfigType* ConfigPtr);
+void EcuM_AL_DriverInitThree(const EcuM_ConfigType* ConfigPtr);
+
 
 #endif /*_ECUM_INTERNALS_H_*/

@@ -15,6 +15,7 @@
 
 
 
+
 #ifndef OS_H_
 #define OS_H_
 
@@ -345,6 +346,18 @@ void Os_SysTickInit( void );
 void Os_SysTickStart(TickType period_ticks);
 TickType Os_SysTickGetValue( void );
 TickType Os_SysTickGetElapsedValue( TickType preValue );
+
+/* Return a value that is always a free running timer */
+TickType GetOsTick( void );
+
+/* Since this is based on SW ticks, no use to have ns resolution */
+#define OSTICKDURATION_US		(OSTICKDURATION/1000UL)
+
+/* Have special macros to always get the OsTick */
+#define OS_TICKS2SEC_OS_TICK(_ticks)		( (OSTICKDURATION_US * (_ticks))/1000000UL )
+#define OS_TICKS2MS_OS_TICK(_ticks)		( (OSTICKDURATION_US * (_ticks))/1000UL )
+#define OS_TICKS2US_OS_TICK(_ticks)		(OSTICKDURATION_US * (_ticks))
+#define OS_TICKS2NS_OS_TICK(_ticks)		(OSTICKDURATION * (_ticks))
 
 /*-------------------------------------------------------------------
  * Kernel extra

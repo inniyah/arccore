@@ -36,7 +36,7 @@
 #if defined(CFG_MPC5567)
 #define CALC_SYSTEM_CLOCK(_extal,_emfd,_eprediv,_erfd)  \
             ( (_extal) * ((_emfd)+4) / (((_eprediv)+1)*(1<<(_erfd))) )
-#elif defined(CFG_MPC5606S)
+#elif defined(CFG_MPC560X)
 #define CALC_SYSTEM_CLOCK(_extal,_emfd,_eprediv,_erfd)  \
 	        ( (_extal)*(_emfd) / ((_eprediv+1)*(2<<(_erfd))) )
 #else
@@ -105,7 +105,7 @@ void Mcu_LossOfLock( void  ){
    * If you are going to use this interrupt, see [Freescale Device Errata MPC5510ACE, Rev. 10 APR 2009, errata ID: 6764].
    *
    */
-#if defined(CFG_MPC5606S)
+#if defined(CFG_MPC560X)
 	/*not support*/
 #else
 	Mcu_Global.stats.lossOfLockCnt++;
@@ -118,7 +118,7 @@ void Mcu_LossOfLock( void  ){
 
 void Mcu_LossOfClock( void  ){
 	/* Should report MCU_E_CLOCK_FAILURE with DEM here */
-#if defined(CFG_MPC5606S)
+#if defined(CFG_MPC560X)
 	/*not support*/
 #else
 	Mcu_Global.stats.lossOfClockCnt++;
@@ -134,6 +134,7 @@ void Mcu_LossOfClock( void  ){
 #define CORE_PVR_E200Z0   	0x81710000UL
 #define CORE_PVR_E200Z3 	0x81120000UL
 #define CORE_PVR_E200Z6   	0x81170000UL
+#define CORE_PVR_E200Z65   	0x81150000UL	/* Is actually a 5668 */
 #define CORE_PVR_E200Z0H   	0x817F0000UL
 
 typedef struct{
@@ -166,11 +167,25 @@ const cpu_info_t cpu_info_list[] = {
     	.name = "MPC563X",
     	.pvr = CORE_PVR_E200Z3,
     },
+#elif defined(CFG_MPC5604B)
+    {
+    	.name = "MPC5604B",
+    	.pvr = CORE_PVR_E200Z0H,
+    },
 #elif defined(CFG_MPC5606S)
     {
     	.name = "MPC5606S",
     	.pvr = CORE_PVR_E200Z0H,
     },
+#elif defined(CFG_MPC5668)
+	{
+		.name = "MPC5668",
+		.pvr = CORE_PVR_E200Z65,
+	},
+	{
+		.name = "MPC5668",
+		.pvr = CORE_PVR_E200Z0,
+	},
 #endif
 };
 
@@ -194,10 +209,24 @@ const core_info_t core_info_list[] = {
 		.name = "CORE_E200Z3",
 		.pvr = CORE_PVR_E200Z3,
     },
+#elif defined(CFG_MPC5604B)
+    {
+    	.name = "MPC5604B",
+    	.pvr = CORE_PVR_E200Z0H,
+    },
 #elif defined(CFG_MPC5606S)
     {
     	.name = "MPC5606S",
     	.pvr = CORE_PVR_E200Z0H,
+    },
+#elif defined(CFG_MPC5668)
+    {
+    	.name = "CORE_E200Z65",
+    	.pvr = CORE_PVR_E200Z65,
+    },
+    {
+    	.name = "CORE_E200Z0",
+    	.pvr = CORE_PVR_E200Z1,
     },
 #endif
 };
@@ -235,12 +264,12 @@ static const core_info_t *Mcu_IdentifyCore(uint32 pvr)
 
 static uint32 Mcu_CheckCpu( void ) {
 	uint32 pvr;
-	uint32 pir;
+	// uint32 pir;
 	const cpu_info_t *cpuType;
 	const core_info_t *coreType;
 
     // We have to registers to read here, PIR and PVR
-    pir = get_spr(SPR_PIR);
+    // pir = get_spr(SPR_PIR);
     pvr = get_spr(SPR_PVR);
 
     cpuType = Mcu_IdentifyCpu(pvr);
@@ -263,7 +292,7 @@ void Mcu_Init(const Mcu_ConfigType *configPtr)
 {
 	VALIDATE( ( NULL != configPtr ), MCU_INIT_SERVICE_ID, MCU_E_PARAM_CONFIG );
 
-#if defined(CFG_MPC5606S)
+#if defined(CFG_MPC560X)
 	/* Disable watchdog. Watchdog is enabled default after reset.*/
  	SWT.SR.R = 0x0000c520;     /* Write keys to clear soft lock bit */
  	SWT.SR.R = 0x0000d928;
@@ -285,7 +314,7 @@ void Mcu_Init(const Mcu_ConfigType *configPtr)
 
     Mcu_Global.config = configPtr;
 
-#if defined(CFG_MPC5606S)
+#if defined(CFG_MPC560X)
     /* Enable DRUN, RUN0, SAFE, RESET modes */
     ME.MER.R = 0x0000001D;
 #endif
@@ -293,17 +322,17 @@ void Mcu_Init(const Mcu_ConfigType *configPtr)
     Mcu_Global.initRun = 1;
 
     if( Mcu_Global.config->McuClockSrcFailureNotification == TRUE  ) {
-#if defined(CFG_MPC5606S)
+#if defined(CFG_MPC560X)
     	/*not support*/
 #else
     	ISR_INSTALL_ISR1("LossOfLock", Mcu_LossOfLock, PLL_SYNSR_LOLF, 10 , 0 );
-#if defined(CFG_MPC5516)
+#if defined(CFG_MPC5516)  || defined(CFG_MPC5668)
     	FMPLL.ESYNCR2.B.LOLIRQ = 1;
 #elif defined(CFG_MPC5554) || defined(CFG_MPC5567)
     	FMPLL.SYNCR.B.LOLIRQ = 1;
 #endif
     	ISR_INSTALL_ISR1("LossOfClock", Mcu_LossOfClock, PLL_SYNSR_LOLF, 10 , 0 );
-#if defined(CFG_MPC5516)
+#if defined(CFG_MPC5516) || defined(CFG_MPC5668)
     	FMPLL.ESYNCR2.B.LOCIRQ = 1;
 #elif defined(CFG_MPC5554) || defined(CFG_MPC5567)
     	FMPLL.SYNCR.B.LOCIRQ = 1;
@@ -344,7 +373,7 @@ Std_ReturnType Mcu_InitClock(const Mcu_ClockType ClockSetting)
 
     // TODO: find out if the 5554 really works like the 5516 here
     // All three (16, 54, 67) used to run the same code here though, so i'm sticking it with 5516
-#if defined(CFG_MPC5516) || defined(CFG_MPC5554)
+#if defined(CFG_MPC5516) || defined(CFG_MPC5554) || defined(CFG_MPC5668)
     /* 5516clock info:
      * Fsys - System frequency ( CPU + all periperals? )
      *
@@ -380,7 +409,11 @@ Std_ReturnType Mcu_InitClock(const Mcu_ClockType ClockSetting)
     }
 #endif
 
-#if defined(CFG_MPC5516)
+#if defined(CFG_MPC5516) || defined(CFG_MPC5668)
+
+    // set post divider to next valid value to ensure that an overshoot during lock phase
+    // won't result in a too high freq
+    FMPLL.ESYNCR2.B.ERFD = (clockSettingsPtr->Pll3 + 1) | 1;
 
     // External crystal PLL mode.
     FMPLL.ESYNCR1.B.CLKCFG = 7; //TODO: Hur ställa detta för 5567?
@@ -388,10 +421,54 @@ Std_ReturnType Mcu_InitClock(const Mcu_ClockType ClockSetting)
     // Write pll parameters.
     FMPLL.ESYNCR1.B.EPREDIV = clockSettingsPtr->Pll1;
     FMPLL.ESYNCR1.B.EMFD    = clockSettingsPtr->Pll2;
-    FMPLL.ESYNCR2.B.ERFD    = clockSettingsPtr->Pll3;
 
+    while(FMPLL.SYNSR.B.LOCK != 1) {};
+
+    FMPLL.ESYNCR2.B.ERFD    = clockSettingsPtr->Pll3;
     // Connect SYSCLK to FMPLL
     SIU.SYSCLK.B.SYSCLKSEL = SYSCLOCK_SELECT_PLL;
+#elif defined(CFG_MPC5604B)
+    // Write pll parameters.
+    CGM.FMPLL_CR.B.IDF = clockSettingsPtr->Pll1;
+    CGM.FMPLL_CR.B.NDIV = clockSettingsPtr->Pll2;
+    CGM.FMPLL_CR.B.ODF = clockSettingsPtr->Pll3;
+
+    /* RUN0 cfg: 16MHzIRCON,OSC0ON,PLL0ON,syclk=PLL0 */
+    ME.RUN[0].R = 0x001F0074;
+    /* Peri. Cfg. 1 settings: only run in RUN0 mode */
+    ME.RUNPC[1].R = 0x00000010;
+    /* MPC56xxB/S: select ME.RUNPC[1] */
+    ME.PCTL[68].R = 0x01; //SIUL control
+    ME.PCTL[91].R = 0x01; //RTC/API control
+    ME.PCTL[92].R = 0x01; //PIT_RTI control
+    ME.PCTL[72].R = 0x01; //eMIOS0 control
+    ME.PCTL[73].R = 0x01; //eMIOS1 control
+    ME.PCTL[16].R = 0x01; //FlexCAN0 control
+    ME.PCTL[17].R = 0x01; //FlexCAN1 control
+    ME.PCTL[4].R = 0x01;  /* MPC56xxB/P/S DSPI0  */
+    ME.PCTL[5].R = 0x01;  /* MPC56xxB/P/S DSPI1:  */
+    ME.PCTL[32].R = 0x01; //ADC0 control
+    ME.PCTL[23].R = 0x01; //DMAMUX control
+    ME.PCTL[48].R = 0x01; /* MPC56xxB/P/S LINFlex  */
+    ME.PCTL[49].R = 0x01; /* MPC56xxB/P/S LINFlex  */
+    /* Mode Transition to enter RUN0 mode: */
+    /* Enter RUN0 Mode & Key */
+    ME.MCTL.R = 0x40005AF0;
+    /* Enter RUN0 Mode & Inverted Key */
+    ME.MCTL.R = 0x4000A50F;
+
+    /* Wait for mode transition to complete */
+    while (ME.GS.B.S_MTRANS) {}
+    /* Verify RUN0 is the current mode */
+    while(ME.GS.B.S_CURRENTMODE != 4) {}
+
+    CGM.SC_DC[0].R = 0x80; /* MPC56xxB/S: Enable peri set 1 sysclk divided by 1 */
+    CGM.SC_DC[1].R = 0x80; /* MPC56xxB/S: Enable peri set 1 sysclk divided by 1 */
+    CGM.SC_DC[2].R = 0x80; /* MPC56xxB/S: Enable peri set 1 sysclk divided by 1 */
+
+    SIU.PSMI[0].R = 0x01; /* CAN1RX on PCR43 */
+    SIU.PSMI[6].R = 0x01; /* CS0/DSPI_0 on PCR15 */
+
 #elif defined(CFG_MPC5606S)
     // Write pll parameters.
     CGM.FMPLL[0].CR.B.IDF = clockSettingsPtr->Pll1;
@@ -410,11 +487,12 @@ Std_ReturnType Mcu_InitClock(const Mcu_ClockType ClockSetting)
     ME.PCTL[73].R = 0x01; //eMIOS1 control
     ME.PCTL[16].R = 0x01; //FlexCAN0 control
     ME.PCTL[17].R = 0x01; //FlexCAN1 control
-    ME.PCTL[4].R = 0x01;  /* MPC56xxB/P/S DSPI0:  select ME.RUNPC[0] */
-    ME.PCTL[5].R = 0x01;  /* MPC56xxB/P/S DSPI1:  select ME.RUNPC[0] */
+    ME.PCTL[4].R = 0x01;  /* MPC56xxB/P/S DSPI0  */
+    ME.PCTL[5].R = 0x01;  /* MPC56xxB/P/S DSPI1:  */
     ME.PCTL[32].R = 0x01; //ADC0 control
     ME.PCTL[23].R = 0x01; //DMAMUX control
-    ME.PCTL[48].R = 0x01; /* MPC56xxB/P/S LINFlex 0: select ME.RUNPC[1] */
+    ME.PCTL[48].R = 0x01; /* MPC56xxB/P/S LINFlex  */
+    ME.PCTL[49].R = 0x01; /* MPC56xxB/P/S LINFlex  */
     /* Mode Transition to enter RUN0 mode: */
     /* Enter RUN0 Mode & Key */
     ME.MCTL.R = 0x40005AF0;
@@ -425,6 +503,10 @@ Std_ReturnType Mcu_InitClock(const Mcu_ClockType ClockSetting)
     while (ME.GS.B.S_MTRANS) {}
     /* Verify RUN0 is the current mode */
     while(ME.GS.B.S_CURRENTMODE != 4) {}
+
+    CGM.SC_DC[0].R = 0x80; /* MPC56xxB/S: Enable peri set 1 sysclk divided by 1 */
+    CGM.SC_DC[1].R = 0x80; /* MPC56xxB/S: Enable peri set 1 sysclk divided by 1 */
+    CGM.SC_DC[2].R = 0x80; /* MPC56xxB/S: Enable peri set 1 sysclk divided by 1 */
 
  #elif defined(CFG_MPC5554) || defined(CFG_MPC5567)
     // Partially following the steps in MPC5567 RM..
@@ -450,7 +532,9 @@ Std_ReturnType Mcu_InitClock(const Mcu_ClockType ClockSetting)
 void Mcu_DistributePllClock(void)
 {
     VALIDATE( ( 1 == Mcu_Global.initRun ), MCU_DISTRIBUTEPLLCLOCK_SERVICE_ID, MCU_E_UNINIT );
-#if defined(CFG_MPC5606S)
+#if defined(CFG_MPC5604B)
+    VALIDATE( ( CGM.FMPLL_CR.B.S_LOCK == 1 ), MCU_DISTRIBUTEPLLCLOCK_SERVICE_ID, MCU_E_PLL_NOT_LOCKED );
+#elif defined(CFG_MPC5606S)
     VALIDATE( ( CGM.FMPLL[0].CR.B.S_LOCK == 1 ), MCU_DISTRIBUTEPLLCLOCK_SERVICE_ID, MCU_E_PLL_NOT_LOCKED );
 #else
     VALIDATE( ( FMPLL.SYNSR.B.LOCK == 1 ), MCU_DISTRIBUTEPLLCLOCK_SERVICE_ID, MCU_E_PLL_NOT_LOCKED );
@@ -468,7 +552,15 @@ Mcu_PllStatusType Mcu_GetPllStatus(void)
 
     if( !SIMULATOR() )
     {
-#if defined(CFG_MPC5606S)
+#if defined(CFG_MPC5604B)
+    	if ( !CGM.FMPLL_CR.B.S_LOCK )
+    	{
+    		rv = MCU_PLL_UNLOCKED;
+    	} else
+    	{
+    		rv = MCU_PLL_LOCKED;
+    	}
+#elif defined(CFG_MPC5606S)
     	if ( !CGM.FMPLL[0].CR.B.S_LOCK )
     	{
     		rv = MCU_PLL_UNLOCKED;
@@ -503,7 +595,7 @@ Mcu_ResetType Mcu_GetResetReason(void)
 
 	VALIDATE_W_RV( ( 1 == Mcu_Global.initRun ), MCU_GETRESETREASON_SERVICE_ID, MCU_E_UNINIT, MCU_RESET_UNDEFINED );
 
-#if defined(CFG_MPC5606S)
+#if defined(CFG_MPC560X)
 	if( RGM.FES.B.F_SOFT ) {
 		rv = MCU_SW_RESET;
 	} else if( RGM.DES.B.F_SWT ) {
@@ -538,7 +630,7 @@ Mcu_RawResetType Mcu_GetResetRawValue(void)
 		return MCU_GETRESETRAWVALUE_UNINIT_RV;
 	}
 
-#if defined(CFG_MPC5606S)
+#if defined(CFG_MPC560X)
 	if( RGM.DES.R )
 		return RGM.DES.R;
 	else
@@ -557,7 +649,7 @@ void Mcu_PerformReset(void)
 	VALIDATE( ( 1 == Mcu_Global.initRun ), MCU_PERFORMRESET_SERVICE_ID, MCU_E_UNINIT );
 
 	// Reset
-#if defined(CFG_MPC5606S)
+#if defined(CFG_MPC560X)
     ME.MCTL.R = 0x00005AF0;
     ME.MCTL.R = 0x0000A50F;
 
@@ -597,7 +689,7 @@ uint32_t McuE_GetSystemClock(void)
 	 * 563x -  We run in legacy mode = 5567
 	 * 5606s - f_sys = extal * emfd / ((eprediv+1)*(2<<(erfd)));
 	 */
-#if defined(CFG_MPC5516)
+#if defined(CFG_MPC5516) || defined(CFG_MPC5668)
 	uint32_t eprediv = FMPLL.ESYNCR1.B.EPREDIV;
 	uint32_t emfd = FMPLL.ESYNCR1.B.EMFD;
 	uint32_t erfd = FMPLL.ESYNCR2.B.ERFD;
@@ -605,6 +697,10 @@ uint32_t McuE_GetSystemClock(void)
 	uint32_t eprediv = FMPLL.SYNCR.B.PREDIV;
 	uint32_t emfd = FMPLL.SYNCR.B.MFD;
 	uint32_t erfd = FMPLL.SYNCR.B.RFD;
+#elif defined(CFG_MPC5604B)
+    uint32_t eprediv = CGM.FMPLL_CR.B.IDF;
+    uint32_t emfd = CGM.FMPLL_CR.B.NDIV;
+    uint32_t erfd = CGM.FMPLL_CR.B.ODF;
 #elif defined(CFG_MPC5606S)
     uint32_t eprediv = CGM.FMPLL[0].CR.B.IDF;
     uint32_t emfd = CGM.FMPLL[0].CR.B.NDIV;
@@ -619,6 +715,51 @@ uint32_t McuE_GetSystemClock(void)
     return f_sys;
 }
 
+#if defined(CFG_MPC5668)
+uint32_t McuE_GetPeripheralClock(McuE_PeriperalClock_t type) {
+	uint32_t sysClock = McuE_GetSystemClock();
+	vuint32_t prescaler;
+
+	switch (type)
+	{
+		case PERIPHERAL_CLOCK_FLEXCAN_A:
+		case PERIPHERAL_CLOCK_FLEXCAN_B:
+		case PERIPHERAL_CLOCK_FLEXCAN_C:
+		case PERIPHERAL_CLOCK_FLEXCAN_D:
+		case PERIPHERAL_CLOCK_FLEXCAN_E:
+		case PERIPHERAL_CLOCK_FLEXCAN_F:
+		case PERIPHERAL_CLOCK_DSPI_A:
+		case PERIPHERAL_CLOCK_DSPI_B:
+		case PERIPHERAL_CLOCK_DSPI_C:
+		case PERIPHERAL_CLOCK_DSPI_D:
+			prescaler = SIU.SYSCLK.B.LPCLKDIV1;
+			break;
+		case PERIPHERAL_CLOCK_ESCI_A:
+		case PERIPHERAL_CLOCK_ESCI_B:
+		case PERIPHERAL_CLOCK_ESCI_C:
+		case PERIPHERAL_CLOCK_ESCI_D:
+		case PERIPHERAL_CLOCK_ESCI_E:
+		case PERIPHERAL_CLOCK_ESCI_F:
+		case PERIPHERAL_CLOCK_IIC_A:
+		case PERIPHERAL_CLOCK_IIC_B:
+			prescaler = SIU.SYSCLK.B.LPCLKDIV0;
+			break;
+		case PERIPHERAL_CLOCK_ADC_A:
+			prescaler = SIU.SYSCLK.B.LPCLKDIV2;
+			break;
+		case PERIPHERAL_CLOCK_EMIOS:
+			prescaler = SIU.SYSCLK.B.LPCLKDIV3;
+			break;
+		default:
+			assert(0);
+			break;
+	}
+
+	return sysClock/(1<<prescaler);
+
+}
+
+#else
 
 /**
  * Get the peripheral clock in Hz for a specific device
@@ -640,8 +781,8 @@ uint32_t McuE_GetPeripheralClock(McuE_PeriperalClock_t type)
 #if defined(CFG_MPC5516)
 			prescaler = SIU.SYSCLK.B.LPCLKDIV0;
 			break;
-#elif defined(CFG_MPC5606S)
-			prescaler = CGM.SC_DC[1].R;
+#elif defined(CFG_MPC560X)
+			prescaler = CGM.SC_DC[1].B.DIV;
 			break;
 #endif
 
@@ -661,8 +802,8 @@ uint32_t McuE_GetPeripheralClock(McuE_PeriperalClock_t type)
 #if defined(CFG_MPC5516)
 			prescaler = SIU.SYSCLK.B.LPCLKDIV2;
 			break;
-#elif defined(CFG_MPC5606S)
-			prescaler = CGM.SC_DC[1].R;
+#elif defined(CFG_MPC560X)
+			prescaler = CGM.SC_DC[1].B.DIV;
 			break;
 #endif
 
@@ -686,16 +827,20 @@ uint32_t McuE_GetPeripheralClock(McuE_PeriperalClock_t type)
 			break;
 #endif
 
-#if defined(CFG_MPC5606S)
+#if defined(CFG_MPC560X)
 		case PERIPHERAL_CLOCK_LIN_A:
 		case PERIPHERAL_CLOCK_LIN_B:
-			prescaler = CGM.SC_DC[0].R;
+#if defined(CFG_MPC5604B)
+		case PERIPHERAL_CLOCK_LIN_C:
+		case PERIPHERAL_CLOCK_LIN_D:
+#endif
+			prescaler = CGM.SC_DC[0].B.DIV;
 			break;
 		case PERIPHERAL_CLOCK_EMIOS_0:
-			prescaler = CGM.SC_DC[2].R;
+			prescaler = CGM.SC_DC[2].B.DIV;
 			break;
 		case PERIPHERAL_CLOCK_EMIOS_1:
-			prescaler = CGM.SC_DC[2].R;
+			prescaler = CGM.SC_DC[2].B.DIV;
 			break;
 #else
 		case PERIPHERAL_CLOCK_EMIOS:
@@ -719,7 +864,7 @@ uint32_t McuE_GetPeripheralClock(McuE_PeriperalClock_t type)
 	return sysClock/(1<<prescaler);
 #endif
 }
-
+#endif
 
 /**
  * Function to setup the internal flash for optimal performance
@@ -760,6 +905,16 @@ static void Mcu_ConfigureFlash(void)
 
 	/* Enable pipelined reads again. */
 	FLASH.MCR.B.PRD = 0;
+#elif defined(CFG_MPC5668)
+	/* Check values from cookbook and MPC5668x Microcontroller Data Sheet */
+
+	/* Should probably trim this values */
+	const typeof(FLASH.PFCRP0.B) val = {.M0PFE = 1, .M2PFE=1, .APC=3,
+								 .RWSC=3, .WWSC =1, .DPFEN =1, .IPFEN = 1, .PFLIM =2,
+								 .BFEN  = 1 };
+	FLASH.PFCRP0.B = val;
+
+	/* Enable pipelined reads again. */
 #elif defined(CFG_MPC5554) || defined(CFG_MPC5567)
 	//TODO: Lägg till flash för mpc5554 &67
 #endif

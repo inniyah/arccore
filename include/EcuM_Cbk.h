@@ -13,28 +13,25 @@
  * for more details.
  * -------------------------------- Arctic Core ------------------------------*/
 
-
-
-
-
-
+/*
+ * Callback used by
+ *
+ *
+ */
 
 
 #ifndef ECUM_CBK_H_
 #define ECUM_CBK_H_
 
+
+#include "EcuM.h"
+
+
 //void EcuM_CB_NfyNvMJobEnd(uint8 ServiceId, NvM_RequestResultType JobResult);
 
-void EcuM_SetWakeupEvent(EcuM_WakeupSourceType sources);
 void EcuM_ValidateWakeupEvent(EcuM_WakeupSourceType sources);
 
 void EcuM_ErrorHook(Std_ReturnType reason);
-
-void EcuM_AL_DriverInitZero(void);
-EcuM_ConfigType* EcuM_DeterminePbConfiguration(void);
-void EcuM_AL_DriverInitOne(const EcuM_ConfigType* ConfigPtr);
-void EcuM_AL_DriverInitTwo(const EcuM_ConfigType* ConfigPtr);
-void EcuM_AL_DriverInitThree(const EcuM_ConfigType* ConfigPtr);
 
 void EcuM_OnRTEStartup(void);
 

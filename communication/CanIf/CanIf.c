@@ -918,10 +918,18 @@ void CanIf_CancelTxConfirmation(const Can_PduType *PduInfoPtr)
 
 void CanIf_ControllerBusOff(uint8 Controller)
 {
-  // We call this a CanIf channel. Hopefully makes it easier to follow.
-  CanIf_Arc_ChannelIdType channel = (CanIf_Arc_ChannelIdType) Controller;
+  CanIf_Arc_ChannelIdType channel = 0xff;
 
   VALIDATE_NO_RV( CanIf_Global.initRun, CANIF_CONTROLLER_BUSOFF_ID, CANIF_E_UNINIT );
+
+  for(int i = 0; i < CANIF_CHANNEL_CNT; i++)
+  {
+	  if(CanIf_ConfigPtr->Arc_ChannelToControllerMap[i] == Controller)
+	  {
+		  channel = i;
+	  }
+  }
+
   VALIDATE_NO_RV( Controller < CANIF_CHANNEL_CNT, CANIF_CONTROLLER_BUSOFF_ID, CANIF_E_PARAM_CONTROLLER );
 
   // According to figure 35 in canif spec this should be done in
@@ -936,33 +944,39 @@ void CanIf_ControllerBusOff(uint8 Controller)
 
 void CanIf_SetWakeupEvent(uint8 Controller)
 {
-#if  ( CANIF_DEV_ERROR_DETECT == STD_ON )
-  // We call this a CanIf channel. Hopefully makes it easier to follow.
-  CanIf_Arc_ChannelIdType channel = (CanIf_Arc_ChannelIdType) Controller;
-#else
-  (void)Controller;
-#endif
+	CanIf_Arc_ChannelIdType channel = 0xff;
 
-  VALIDATE_NO_RV(FALSE, CANIF_SETWAKEUPEVENT_ID, CANIF_E_NOK_NOSUPPORT);
-  VALIDATE_NO_RV( CanIf_Global.initRun, CANIF_SETWAKEUPEVENT_ID, CANIF_E_UNINIT );
-  VALIDATE_NO_RV( channel < CANIF_CHANNEL_CNT, CANIF_SETWAKEUPEVENT_ID, CANIF_E_PARAM_CONTROLLER );
+	VALIDATE_NO_RV( CanIf_Global.initRun, CANIF_SETWAKEUPEVENT_ID, CANIF_E_UNINIT );
 
-  // Not supported
+	for(int i = 0; i < CANIF_CHANNEL_CNT; i++)
+	{
+	  if(CanIf_ConfigPtr->Arc_ChannelToControllerMap[i] == Controller)
+	  {
+		  channel = i;
+	  }
+	}
+
+	VALIDATE_NO_RV(FALSE, CANIF_SETWAKEUPEVENT_ID, CANIF_E_NOK_NOSUPPORT);
+	VALIDATE_NO_RV( channel < CANIF_CHANNEL_CNT, CANIF_SETWAKEUPEVENT_ID, CANIF_E_PARAM_CONTROLLER );
+
+	// Not supported
 }
 
 void CanIf_Arc_Error(uint8 Controller, Can_Arc_ErrorType Error)
 {
-  // We call this a CanIf channel. Hopefully makes it easier to follow.
-  CanIf_Arc_ChannelIdType channel = (CanIf_Arc_ChannelIdType) Controller;
+  CanIf_Arc_ChannelIdType channel = 0xff;
 
   VALIDATE_NO_RV( CanIf_Global.initRun, CANIF_ARCERROR_ID, CANIF_E_UNINIT );
-  VALIDATE_NO_RV( channel < CANIF_CHANNEL_CNT, CANIF_ARCERROR_ID, CANIF_E_PARAM_CONTROLLER );
 
-  /* Same handling for Arc error as for BUS_OFF even if not in AR req.
-   * This because we do want same handling for upper layer for restart of channel
-   * According to figure 35 in canif spec this should be done in
-   * Can driver but it is better to do it here */
-  CanIf_SetControllerMode(channel, CANIF_CS_STOPPED);
+  for(int i = 0; i < CANIF_CHANNEL_CNT; i++)
+  {
+	  if(CanIf_ConfigPtr->Arc_ChannelToControllerMap[i] == Controller)
+	  {
+		  channel = i;
+	  }
+  }
+
+  VALIDATE_NO_RV( channel < CANIF_CHANNEL_CNT, CANIF_ARCERROR_ID, CANIF_E_PARAM_CONTROLLER );
 
   if (CanIf_ConfigPtr->DispatchConfig->CanIfErrorNotificaton != NULL)
   {

@@ -35,8 +35,9 @@ endif
 #Ecu
 obj-$(USE_ECUM) += EcuM.o
 obj-$(USE_ECUM) += EcuM_Main.o
-obj-$(USE_ECUM) += EcuM_Cfg.o
-obj-$(USE_ECUM) += EcuM_Callout_template.o
+obj-$(USE_ECUM) += EcuM_PBcfg.o
+obj-$(USE_ECUM) += EcuM_Callout_Stubs.o
+obj-$(USE_ECUM)-$(CFG_ECUM_USE_SERVICE_COMPONENT) += EcuM_ServiceComponent.o
 inc-$(USE_ECUM) += $(ROOTDIR)/system/EcuM
 vpath-$(USE_ECUM) += $(ROOTDIR)/system/EcuM
 
@@ -62,18 +63,18 @@ obj-$(USE_MCU) += Mcu_Cfg.o
 # Flash
 obj-$(USE_FLS) += Fls.o
 obj-$(USE_FLS) += Fls_Cfg.o
-ifeq ($(CFG_MPC5606S),y)
-obj-$(CFG_MPC55XX)-$(USE_FLS) += Fls_C90FL.o
-else
-obj-$(CFG_MPC55XX)-$(USE_FLS) += Fls_H7F.o
-endif
+obj-$(CFG_MPC55XX)-$(USE_FLS) += flash_h7f_c90.o
+obj-$(CFG_MPC55XX)-$(USE_FLS) += flash_ll_h7f_c90.o
+
 
 # Bring in the freescale driver source  
 inc-$(CFG_MPC55XX) +=  $(ROOTDIR)/$(ARCH_PATH-y)/delivery/mpc5500_h7f/include
 
 # Can
 obj-$(USE_CAN) += Can.o
-obj-$(USE_CAN) += Can_Lcfg.o
+obj-$(USE_CAN)-$(CFG_PPC) += Can_PBcfg.o
+obj-$(USE_CAN)-$(CFG_ARM_CM3) += Can_Lcfg.o
+obj-$(USE_CAN)-$(CFG_HC1X) += Can_Lcfg.o
 
 # CanIf
 obj-$(USE_CANIF) += CanIf.o
@@ -94,8 +95,20 @@ obj-$(USE_DIO) += Dio_Lcfg.o
 obj-$(USE_PORT) += Port.o
 obj-$(USE_PORT) += Port_Cfg.o
 
-obj-$(USE_ADC) += Adc.o
+obj-$(USE_ADC)-$(CFG_MPC560X) += Adc_560x.o
+obj-$(USE_ADC)-$(CFG_HC1X) += Adc.o
+obj-$(USE_ADC)-$(CFG_ARM_CM3) += Adc.o
+obj-$(USE_ADC)-$(CFG_MPC5516) += Adc_eQADC.o
+obj-$(USE_ADC)-$(CFG_MPC5567) += Adc_eQADC.o
 obj-$(USE_ADC) += Adc_Cfg.o
+obj-$(USE_ADC) += Adc_Internal.o
+vpath-y += $(ROOTDIR)/drivers
+inc-y += $(ROOTDIR)/drivers
+
+# Crc
+vpath-$(USE_CRC32) += $(ROOTDIR)/system/Crc
+obj-$(USE_CRC32) += Crc_32.o
+obj-$(USE_CRC16) += Crc_16.o
 
 # J1939Tp
 obj-$(USE_J1939TP) += J1939Tp.o
@@ -115,6 +128,7 @@ obj-$(USE_SPI) += Spi_Lcfg.o
 # NvM
 obj-$(USE_NVM) += NvM.o
 obj-$(USE_NVM) += NvM_Cfg.o
+obj-$(USE_NVM)-$(CFG_NVM_USE_SERVICE_COMPONENT) += NvmM_ServiceComponent.o
 inc-$(USE_NVM) += $(ROOTDIR)/memory/NvM
 vpath-$(USE_NVM) += $(ROOTDIR)/memory/NvM
 
@@ -132,7 +146,6 @@ obj-$(USE_EEP) += Eep_Lcfg.o
 #Fls ext
 obj-$(USE_FLS_SST25XX) += Fls_SST25xx.o
 obj-$(USE_FLS_SST25XX) += Fls_SST25xx_Cfg.o
-vpath-y += $(ROOTDIR)/peripherals
 
 #Wdg
 obj-$(USE_WDG) += Wdg.o
@@ -141,6 +154,7 @@ obj-$(USE_WDG) += Wdg_Lcfg.o
 #WdgIf
 obj-$(USE_WDGIF) += WdgIf.o
 obj-$(USE_WDGIF) += WdgIf_Cfg.o
+obj-$(USE_WDGM)-$(CFG_WDGM_USE_SERVICE_COMPONENT) += WdgM_ServiceComponent.o
 inc-y += $(ROOTDIR)/system/WdgIf
 vpath-y += $(ROOTDIR)/system/WdgIf
 
@@ -160,7 +174,8 @@ obj-$(USE_DET) += Det.o
 # Lin
 obj-$(USE_LIN) += Lin_PBcfg.o
 obj-$(USE_LIN) += Lin_Lcfg.o
-obj-$(USE_LIN) += Lin.o
+obj-$(USE_LIN)-$(CFG_MPC560X) += LinFlex.o
+obj-$(USE_LIN)-$(CFG_MPC5516) += Lin.o
 
 # LinIf
 obj-$(USE_LINIF) += LinIf_Lcfg.o
@@ -231,6 +246,10 @@ vpath-$(USE_PDUR) += $(ROOTDIR)/communication/PduR
 
 # IO Hardware Abstraction
 obj-$(USE_IOHWAB) += IoHwAb.o
+obj-$(USE_IOHWAB) += IoHwAb_Digital.o
+obj-$(USE_IOHWAB) += IoHwAb_Analog.o
+obj-$(USE_IOHWAB) += IoHwAb_Pwm.o
+obj-$(USE_IOHWAB)-$(CFG_IOHWAB_USE_SERVICE_COMPONENT) += IoHwAb_ServiceComponent.o
 
 #Dem
 obj-$(USE_DEM) += Dem.o

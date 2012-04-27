@@ -43,6 +43,12 @@ static CanSM_InternalType CanSM_Internal = {
 		.Networks = CanSM_InternalNetworks,
 };
 
+#ifdef HOST_TEST
+void GetInternals(CanSM_InternalType **ptr){
+	*ptr = &CanSM_Internal;
+}
+#endif
+
 static const CanSM_ConfigType* CanSM_Config;
 
 /** @req CANSM217.exceptTranceiver */
@@ -74,18 +80,18 @@ void CanSM_Init( const CanSM_ConfigType* ConfigPtr ) {
 /** @req CANSM235 */
 void CanSM_ControllerBusOff(uint8 Controller)
 {
-	CANSM_VALIDATE_INIT(CANSM_SERVICEID_CONTROLLERBUSOFF, E_NOT_OK);
+	CANSM_VALIDATE_INIT(CANSM_SERVICEID_CONTROLLERBUSOFF);
 	Std_ReturnType status = E_NOT_OK;
 
 	// Find which network has this controller
 	for (uint8 i = 0; i < CANSM_NETWORK_COUNT; ++i) {
 		const CanSM_NetworkType* Network = &CanSM_Config->Networks[i];
 		for (uint8 j = 0; j < Network->ControllerCount; ++j) {
-			const CanSM_ControllerType* ptrController = &Network->Controllers[i];
+			const CanSM_ControllerType* ptrController = &Network->Controllers[j];
 			if(ptrController->CanIfControllerId == Controller)
 			{
 				CanSM_Internal.Networks[i].busoffevent = TRUE;
-				CanSM_Internal.Networks[i].counter = 0;
+				//CanSM_Internal.Networks[i].counter = 0;
 				status = E_OK;
 			}
 		}
@@ -297,6 +303,9 @@ static void CanSM_Internal_CANSM_BOR_CHECK_L1(NetworkHandleType NetworkHandle)
 		CanSM_Internal_RequestCanIfMode(NetworkHandle, COMM_FULL_COMMUNICATION);
 	}
 	else if(Network->timer >= CanSM_Config->Networks[NetworkHandle].CanSMBorTimeTxEnsured){
+		// clear busoff counter
+		Network->counter = 0;
+
 		Network->BusOffRecoveryState = CANSM_BOR_NO_BUS_OFF;
 	}
 }

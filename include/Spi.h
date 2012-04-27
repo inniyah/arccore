@@ -139,6 +139,9 @@ typedef uint8_t Spi_SequenceType;
 
 #endif
 
+#define SPI_SIMPLE         0   /* Not implemented, NOT TESTED */
+#define SPI_FIFO           1
+#define SPI_DMA            2
 
 #define SPI_EB_MAX_LENGTH 64
 
@@ -232,6 +235,9 @@ typedef enum {
 
 
 #include "Spi_Cfg.h"
+#if (SPI_IMPLEMENTATION==SPI_DMA)
+#include "Dma.h"
+#endif
 
 // All data needed to configure one SPI-channel
 typedef struct Spi_ChannelConfig
@@ -330,6 +336,7 @@ typedef struct Spi_ExternalDevice
   // ArcCore extension...
   // The controller ID(0..3)
   //uint32 SpiControllerId;
+  void (*SpiCsCallback)(int);
 
 } Spi_ExternalDeviceType;
 
@@ -358,10 +365,12 @@ typedef struct Spi_HwConfig
   uint8 Activated;
 
   /* Receive DMA channel. */
+#if (SPI_IMPLEMENTATION==SPI_DMA)
   Dma_ChannelType RxDmaChannel;
 
   /* Transmit DMA channel. */
   Dma_ChannelType TxDmaChannel;
+#endif
 
   /* Peripheral clock source. */
 //  McuE_PeriperalClock_t PeripheralClock;

@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stddef.h>
 #include "Std_Types.h"
 #include "Ramlog.h"
 
@@ -251,7 +252,7 @@ int execve(const char *path, char * const argv[], char * const envp[] ) {
   	return -1;
 }
 
-int fork() {
+pid_t fork() {
   errno=EAGAIN;
   return -1;
 }
@@ -451,18 +452,18 @@ int arc_putchar(int fd, int c) {
 /* If we use malloc and it runs out of memory it calls sbrk()
  */
 
-#if defined(PPC)
+#if defined(CFG_PPC)
 
 /* linker symbols */
-extern char _heap_start;
-extern char _heap_end;		// same as _end?
+extern char _heap_start[];  // incomplete array to ensure not placed in small-data
+extern char _heap_end[];
 
 void * sbrk( ptrdiff_t incr )
 {
     char *prevEnd;
-    static char *nextAvailMemPtr = (char *)&_heap_start;
+    static char *nextAvailMemPtr = _heap_start;
 
-    if( nextAvailMemPtr + incr >  (char*)&_heap_end) {
+    if( nextAvailMemPtr + incr >  _heap_end) {
 		write( 2, "Heap overflow!\n", 15 );
 		abort();
 	}
@@ -519,7 +520,7 @@ int stat( const char *file, struct stat *st ) {
 }
 
 
-int getpid() {
+pid_t getpid() {
   return 1;
 }
 
@@ -542,10 +543,12 @@ void _fini( void )
 }
 
 
+#if defined(__GNUC__)
 void __init( void )
 {
-
 }
+#endif
+
 #if defined(CFG_ARM)
 void _exit( int status ) {
 #ifdef USE_TTY_CODE_COMPOSER

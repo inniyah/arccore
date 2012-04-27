@@ -20,14 +20,82 @@
  * API and type definitions for ECU State Manager.
  */
 
+/*
+ * Include structure:
+ *
+ *
+ *
+ *   Rte_Type.h -->  Std_Types.h
+ *       ^              ^
+ *       |              |
+ *   Rte_EcuM.h <--  EcuM_Types.h*
+ *       ^              ^
+ *       |              |     /-----> EcuM_Cfg.h
+ *       |              |    /------> EcuM_Generated_Types.h
+ *       |              |   /         (Holds EcuM_ConfigType and includes all BSW modules )
+ *       |              |  /-------> EcuM_Cbk.h
+ *       |              | /           (want types EcuM_WakeupSourceType, EcuM_ConfigType *, EcuM_WakeupSourceType , EcuM_WakeupReactionType )
+ *       |              |/
+ *       |            EcuM.h  <----- EcuM_Callout_Stubs.c
+ *       |              ^       \--- EcuM_PBCfg.c
+ *       |              |
+ *       |              |
+ *       `---------- EcuM_xxx.c ---> Memmap.h
+ *                               \-> Det.h, Dem.h
+ *
+ * *) Only ifdef CFG_ECUM_USE_SERVICE_COMPONENT
+ *
+ * Problems:
+ * - Can_Cfg.h can include just "EcuM_Cbk.h"...
+ *   .. it will need at EcuM.h.. problem is that EcuM.h includes EcuM_Cbk.h
+ * - Most BSW modules uses DEM that in Dem_Types.h will include "Rte_Type.h"
+ *   (if enabled by CFG_DEM_USE_RTE)
+ *
+ * - EcuM_Generated_Types.h is quite crappy since it includes the
+ *
+ * Changes:
+ *   - EcuM_Cfg.h , must not include ANY include files.
+ *   - EcuM_Pbcfg.c must include "EcuM_Generated_Types.h"
+ *   - EcuM.c, etc must include "EcuM_Generated_Types.h"
+ *   --> The GOOD, we keep circular include from EcuM_Generated_Types.h
+ *
+ *
+ *
+ */
+
+
 #ifndef ECUM_H_
 #define ECUM_H_
 
-#include "Std_Types.h"
-#include <Os.h>
+#include "Modules.h"
+
+#define ECUM_MODULE_ID			MODULE_ID_ECUM
+#define ECUM_VENDOR_ID			1
+
+#define ECUM_SW_MAJOR_VERSION	2
+#define ECUM_SW_MINOR_VERSION	0
+#define ECUM_SW_PATCH_VERSION	0
+
+#define ECUM_AR_MAJOR_VERSION	1
+#define ECUM_AR_MINOR_VERSION	2
+#define ECUM_AR_PATCH_VERSION	2
+
+//#include "EcuM_Types.h"
+//struct EcuM_Config;
+//typedef struct EcuM_Config EcuM_ConfigType;
+
+/* Holds EcuM_ConfigType */
+/* TODO: forward declare all config types here ? */
+/* TODO: EcuM_Generated_Types must have types from Ecu_Types.h */
+#include "EcuM_Types.h"
+#include "EcuM_Cfg.h"
+#include "EcuM_Cbk.h"
+
 #if defined(USE_COM)
 #include "ComStack_Types.h"
 #endif
+
+
 
 /** @name Error Codes */
 //@{
@@ -61,87 +129,6 @@
 #define ECUM_COMM_HASREQUESTEDRUN_ID (0x1b)
 #define ECUM_ARC_STARTUPTWO_ID (0x20)
 
-/** Possible states */
-typedef enum {
-	ECUM_STATE_APP_RUN = 0x32,
-	ECUM_STATE_SHUTDOWN = 0x40,
-	ECUM_STATE_WAKEUP = 0x20,
-	ECUM_SUBSTATE_MASK = 0x0F,
-	ECUM_STATE_WAKEUP_WAKESLEEP = 0x25,
-	ECUM_STATE_WAKEUP_ONE = 0x21,
-	ECUM_STATE_OFF = 0x80,
-	ECUM_STATE_STARTUP = 0x10,
-	ECUM_STATE_PREP_SHUTDOWN = 0x44,
-	ECUM_STATE_RUN = 0x30,
-	ECUM_STATE_STARTUP_TWO = 0x12,
-	ECUM_STATE_WAKEUP_TTII = 0x26,
-	ECUM_STATE_WAKEUP_VALIDATION = 0x22,
-	ECUM_STATE_GO_SLEEP = 0x49,
-	ECUM_STATE_STARTUP_ONE = 0x11,
-	ECUM_STATE_WAKEUP_TWO = 0x24,
-	ECUM_STATE_SLEEP = 0x50,
-	ECUM_STATE_WAKEUP_REACTION = 0x23,
-	ECUM_STATE_APP_POST_RUN = 0x33,
-	ECUM_STATE_GO_OFF_TWO = 0x4e,
-	ECUM_STATE_RESET = 0x90,
-	ECUM_STATE_GO_OFF_ONE = 0x4d
-} EcuM_StateType;
-
-typedef uint8 EcuM_UserType;
-
-enum {
-	/** Internal reset of µC (bit 2).
-	 *  The internal reset typically only resets the µC
-	 *  core but not peripherals or memory
-	 *  controllers. The exact behavior is hardware
-	 *  specific.
-	 *  This source may also indicate an unhandled
-	 *  exception. */
-	ECUM_WKSOURCE_INTERNAL_RESET = 0x04,
-
-	/** Reset by external watchdog (bit 4), if
-	 *  detection supported by hardware */
-	ECUM_WKSOURCE_EXTERNAL_WDG = 0x10,
-
-	/** Reset by internal watchdog (bit 3) */
-	ECUM_WKSOURCE_INTERNAL_WDG = 0x08,
-
-	/** Power cycle (bit 0) */
-	ECUM_WKSOURCE_POWER = 0x01,
-
-	/** ~0 to the power of 29 */
-	ECUM_WKSOURCE_ALL_SOURCES = 0x3FFFFFFF,
-
-	/** Hardware reset (bit 1).
-	 *  If hardware cannot distinguish between a
-	 *  power cycle and a reset reason, then this
-	 *  shall be the default wakeup source */
-	ECUM_WKSOURCE_RESET = 0x02
-};
-
-typedef uint32 EcuM_WakeupSourceType;
-
-typedef enum
-{
-	ECUM_WKSTATUS_NONE = 0,        /**< No pending wakeup event was detected */
-	ECUM_WKSTATUS_PENDING = 1,     /**< The wakeup event was detected but not yet validated */
-	ECUM_WKSTATUS_VALIDATED = 2,   /**< The wakeup event is valid */
-	ECUM_WKSTATUS_EXPIRED = 3     /**< The wakeup event has not been validated and has expired therefore */
-} EcuM_WakeupStatusType;
-
-typedef enum
-{
-	ECUM_WWKACT_RUN = 0,       /**< Initialization into RUN state */
-	ECUM_WKACT_TTII = 2,       /**< Execute time triggered increased inoperation protocol and shutdown */
-	ECUM_WKACT_SHUTDOWN = 3   /**< Immediate shutdown */
-} EcuM_WakeupReactionType;
-
-typedef enum
-{
-	ECUM_BOOT_TARGET_APP = 0,          /**< The Ecu will boot into the application */
-	ECUM_BOOT_TARGET_BOOTLOADER = 1   /**< The Ecu will boot into the bootloader */
-} EcuM_BootTargetType;
-
 
 #define ECUM_MODULE_ID			MODULE_ID_ECUM
 #define ECUM_VENDOR_ID			1
@@ -154,7 +141,7 @@ typedef enum
 #define ECUM_AR_MINOR_VERSION	2
 #define ECUM_AR_PATCH_VERSION	2
 
-#include "EcuM_Cfg.h"
+//#include "EcuM_Cfg.h"
 
 #if ( ECUM_VERSION_INFO_API == STD_ON)
 #define EcuM_GetVersionInfo(_vi) STD_GET_VERSION_INFO(_vi,ECUM)
@@ -195,6 +182,8 @@ Std_ReturnType EcuM_GetApplicationMode(AppModeType* appMode);
 
 Std_ReturnType EcuM_SelectBootTarget(EcuM_BootTargetType target);
 Std_ReturnType EcuM_GetBootTarget(EcuM_BootTargetType* target);
+
+void EcuM_SetWakeupEvent(EcuM_WakeupSourceType sources);
 
 void EcuM_MainFunction(void);
 
