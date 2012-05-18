@@ -223,6 +223,7 @@ SECTIONS
     Can*.o(.text)
     Pdu*.o(.text)
     Dio*.o(.text)
+    cirq_buffer.o(.text)
 
     . = ALIGN(2);
   } > bank_D AT>bank_D_lma  =0xff

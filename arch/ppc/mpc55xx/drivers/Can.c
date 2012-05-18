@@ -152,6 +152,8 @@
 #include "isr.h"
 #include "irq.h"
 #include "arc.h"
+//#define USE_LDEBUG_PRINTF
+#include "debug.h"
 
 
 /* ----------------------------[private define]------------------------------*/
@@ -497,6 +499,8 @@ static void Can_Isr_Tx(Can_UnitType *uPtr)
 {
     uint8 mbNr;
     flexcan_t *canHw;
+    PduIdType pduId;
+
 
     canHw = uPtr->hwPtr;
 
@@ -514,15 +518,16 @@ static void Can_Isr_Tx(Can_UnitType *uPtr)
     for (; mbMask; mbMask &= ~(1ull << mbNr)) {
         mbNr = ilog2_64(mbMask);
 
-        if (GET_CALLBACKS()->TxConfirmation != NULL) {
-            GET_CALLBACKS()->TxConfirmation(uPtr->cfgCtrlPtr->Can_Arc_TxPduHandles[mbNr-uPtr->cfgCtrlPtr->Can_Arc_TxMailboxStart]);
-        }
+        pduId = uPtr->cfgCtrlPtr->Can_Arc_TxPduHandles[mbNr-uPtr->cfgCtrlPtr->Can_Arc_TxMailboxStart];
         uPtr->cfgCtrlPtr->Can_Arc_TxPduHandles[mbNr-uPtr->cfgCtrlPtr->Can_Arc_TxMailboxStart] = 0;
-//        uPtr->swPduHandles[mbNr] = 0; // Is this really necessary ??
 
-        // Clear interrupt
+        // Clear interrupt and mark txBox as Free
         clearMbFlag(canHw,mbNr);
         uPtr->mbTxFree |= (1ull << mbNr);
+
+        if (GET_CALLBACKS()->TxConfirmation != NULL) {
+            GET_CALLBACKS()->TxConfirmation(pduId);
+        }
     }
 }
 
@@ -531,6 +536,7 @@ static void Can_Isr_Rx(Can_UnitType *uPtr)
     uint8 mbNr;
     uint32 id;
     uint32 mask;
+    uint32 tmp = 0;
 
     flexcan_t *canHw;
     const Can_HardwareObjectType *hohPtr;
@@ -547,10 +553,14 @@ static void Can_Isr_Rx(Can_UnitType *uPtr)
 
         /* Find mailbox */
         mbNr = ilog2_64(iFlag & uPtr->Can_Arc_RxMbMask);
-        iFlag ^= 1ull << mbNr;
 
         /* Check for FIFO interrupt */
         if (canHw->MCR.B.FEN && ((uint32_t)iFlag & (1 << 5))) {
+
+        	tmp++;
+//        	if( tmp > 2) {
+//        		while(1){}
+//        	}
 
             /* Check overflow */
             if (iFlag & (1 << 7)) {
@@ -580,6 +590,8 @@ static void Can_Isr_Rx(Can_UnitType *uPtr)
                 id = canHw->BUF[0].ID.B.STD_ID;
             }
 
+            LDEBUG_PRINTF("FIFO_ID=%x  ",(unsigned int)id);
+
             /* Must now do a manual match to find the right CanHardwareObject
              * to pass to CanIf. We know that the FIFO objects are sorted first.
              */
@@ -588,16 +600,17 @@ static void Can_Isr_Rx(Can_UnitType *uPtr)
             /* Match in order */
             vuint32_t *fifoIdPtr = (vuint32_t *) &canHw->BUF[6];
 
-            for (mbNr = 0; mbNr < uPtr->cfgCtrlPtr->Can_Arc_HohFifoCnt; mbNr++) {
-                mask = canHw->RXIMR[mbNr].R;
 
-                if ((id & mask) != (fifoIdPtr[mbNr] & mask)) {
+            for (uint8 fifoNr = 0; fifoNr < uPtr->cfgCtrlPtr->Can_Arc_HohFifoCnt; fifoNr++) {
+                mask = canHw->RXIMR[fifoNr].R;
+
+                if ((id & mask) != (fifoIdPtr[fifoNr] & mask)) {
                     continue;
                 }
 
                 if (GET_CALLBACKS()->RxIndication != NULL) {
-                    GET_CALLBACKS()->RxIndication(uPtr->cfgCtrlPtr->Can_Arc_MailBoxToHrh[mbNr],
-                            canHw->BUF[0].ID.B.EXT_ID,
+                    GET_CALLBACKS()->RxIndication(uPtr->cfgCtrlPtr->Can_Arc_MailBoxToHrh[fifoNr],
+                    		id,
                             canHw->BUF[0].CS.B.LENGTH,
                             (uint8 *) &canHw->BUF[0].DATA.W[0]);
                 }
@@ -606,11 +619,19 @@ static void Can_Isr_Rx(Can_UnitType *uPtr)
 
             // Clear the interrupt
             canHw->IFRL.B.BUF05I = 1;
+
+            if( canHw->IFRL.B.BUF05I == 0 ) {
+                iFlag ^= 1ull << mbNr;
+            }
+
         } else {
             /* Not FIFO */
+            iFlag ^= 1ull << mbNr;
+
 
             /* activate the internal lock with a read*/
             (void) canHw->BUF[mbNr].CS.R;
+
 
             if (canHw->BUF[mbNr].CS.B.IDE) {
                 id = canHw->BUF[mbNr].ID.R;
@@ -618,6 +639,9 @@ static void Can_Isr_Rx(Can_UnitType *uPtr)
             } else {
                 id = canHw->BUF[mbNr].ID.B.STD_ID;
             }
+
+            LDEBUG_PRINTF("ID=%x  ",(unsigned int)id);
+
 
 #if defined(USE_DET)
             if( canHw->BUF[mbNr].CS.B.CODE == MB_RX_OVERRUN ) {
@@ -640,6 +664,7 @@ static void Can_Isr_Rx(Can_UnitType *uPtr)
             // Clear interrupt
             clearMbFlag(canHw, mbNr);
         }
+
     }
 }
 
@@ -800,7 +825,7 @@ void Can_Init(const Can_ConfigType *config)
         ISR_INSTALL_ISR2( "Can", Can_F_Isr, FLEXCAN_5_BUF_32_63, 2, 0 );
         break;
 	#endif
-#elif defined(CFG_MPC5516) || defined(CFG_MPC5517) || defined(CFG_MPC5567)
+#elif defined(CFG_MPC5516) || defined(CFG_MPC5517) || defined(CFG_MPC5567) || defined(CFG_MPC5668)
         case CAN_CTRL_A:
         ISR_INSTALL_ISR2( "Can", Can_A_BusOff, FLEXCAN_A_ESR_BOFF_INT, 2, 0);
         ISR_INSTALL_ISR2( "Can", Can_A_Err, FLEXCAN_A_ESR_ERR_INT, 2, 0 );
@@ -836,7 +861,7 @@ void Can_Init(const Can_ConfigType *config)
         ISR_INSTALL_ISR2( "Can", Can_E_Isr, FLEXCAN_E_IFLAG1_BUF31_16I, 2, 0 );
         ISR_INSTALL_ISR2( "Can", Can_A_Isr, FLEXCAN_E_IFLAG1_BUF63_32I, 2, 0 );
         break;
-	#if defined(CFG_MPC5516) || defined(CFG_MPC5517)
+	#if defined(CFG_MPC5516) || defined(CFG_MPC5517) || defined(CFG_MPC5668)
         case CAN_CTRL_F:
         ISR_INSTALL_ISR2( "Can", Can_F_BusOff, FLEXCAN_F_ESR_BOFF_INT, 2, 0 );
         ISR_INSTALL_ISR2( "Can", Can_F_Err, FLEXCAN_F_ESR_ERR_INT, 2, 0 );
@@ -996,14 +1021,15 @@ void Can_InitController(uint8 controller,
         }
 
         /* Assign FIFO first it will search for match first there (its the first MBs) */
-        if( cfgCtrlPtr->Can_Arc_HohFifoCnt != 0 ) {
+        if( fifoNr < cfgCtrlPtr->Can_Arc_HohFifoCnt ) {
             /* TODO : Set IDAM */
 
             /* Set the ID */
-            fifoIdPtr->IDTABLE[fifoNr].R =  (hohPtr->CanIdValue << 1);
-            if (hohPtr->CanIdType == CAN_ID_TYPE_EXTENDED) {
-                fifoIdPtr->IDTABLE[fifoNr].R |= 0x40000000;
-            }
+        	if (hohPtr->CanIdType == CAN_ID_TYPE_EXTENDED) {
+        		fifoIdPtr->IDTABLE[fifoNr].R =  ((hohPtr->CanIdValue << 1) | 0x40000000) ;
+        	} else {
+        		fifoIdPtr->IDTABLE[fifoNr].R =  (hohPtr->CanIdValue << 19) ;
+        	}
 
             /* The Mask (we have FULL_CAN here) */
             canHw->RXIMR[fifoNr].R = *hohPtr->CanFilterMaskRef;
@@ -1258,7 +1284,7 @@ Can_ReturnType Can_Write(Can_Arc_HTHType hth, Can_PduType *pduInfo)
             canHw->BUF[mbNr].ID.B.STD_ID = pduInfo->id;
         }
 
-#if defined(CFG_MPC5516) || defined(CFG_MPC5517) || defined(CFG_MPC5606S) || defined(CFG_MPC5604B)
+#if defined(CFG_MPC5516) || defined(CFG_MPC5517) || defined(CFG_MPC5606S) || defined(CFG_MPC5604B) || defined(CFG_MPC5668)
         canHw->BUF[mbNr].ID.B.PRIO = 1; // Set Local Priority
 #endif
 

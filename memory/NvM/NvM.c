@@ -443,6 +443,7 @@ typedef struct {
 	uint8 *			dataPtr;	/* Src or Dest ptr */
 	uint8 		dataIndex;
 	boolean		blockChanged;
+	uint8	    serviceId;
 } Nvm_QueueType;
 
 
@@ -457,6 +458,7 @@ static NvmStateType 				nvmState = NVM_UNINITIALIZED;
 #define RB_CALC_CHECKSUM	2
 
 static int 							nvmSubState = 0;
+static uint8 						serviceId = NVM_INIT_ID;
 //static int nvmSetNr;
 static AdministrativeBlockType 		AdminBlock[NVM_NUM_OF_NVRAM_BLOCKS];
 static AdministrativeMultiBlockType AdminMultiBlock;
@@ -525,6 +527,7 @@ typedef struct {
 	NvmStateType			state;
 	uint16					currBlockIndex;		// Keeps track of next unfinished block
 	NvM_RequestResultType	PendingErrorStatus;	// Status from multi block requests i.e. Read/Write/CancelWrite-all
+	uint8					serviceId;
 } AdminMultiReqType;
 
 static AdminMultiReqType AdminMultiReq;
@@ -683,6 +686,33 @@ static void writeCrcToBuffer( 	void *bufPtr,
 	}
 }
 
+#define REDUNDANT_BLOCK_OK				0
+#define REDUNDANT_BLOCK_BOTH_FAIL		1
+#define REDUNDANT_BLOCK_OK				0
+
+
+static boolean handleRedundantBlock(const NvM_BlockDescriptorType *bPtr,
+									AdministrativeBlockType *admPtr ) {
+	boolean cont = 0;
+	/* According to 3.1.5/NVM137 we have 2 NV Blocks and 0..1 ROM Blocks */
+	/* Req 3.1.5/NVM199 , 3.1.5/NVM279 , 3.1.5/NVM317
+	 * 3.1.5/NVM288, 3.1.5/NVM315
+	 * */
+
+	if ( bPtr->BlockManagementType == NVM_BLOCK_REDUNDANT ) {
+		if( admPtr->flags == 1 ) {
+			NVM_ASSERT(bPtr->NvBlockNum == 2);		/* Configuration error */
+			admPtr->DataIndex = ((admPtr->DataIndex) ? 0 : 1);
+			admPtr->BlockState = BLOCK_STATE_MEMIF_REQ;
+			DEBUG_PRINTF(" # First redundant NV block failed\n");
+			cont = 1;
+		} else {
+			DEBUG_PRINTF(" # Both redundant NV blocks failed\n");
+		}
+		admPtr->flags++;
+	}
+	return cont;
+}
 
 /*
  * Drive the read state-machine
@@ -821,6 +851,8 @@ static void DriveBlock( const NvM_BlockDescriptorType	*bPtr,
 						assert( bPtr->BlockUseCrc == 1);
 						admPtr->BlockState = BLOCK_STATE_CALC_CRC_READ;
 						admPtr->BlockSubState = BLOCK_SUBSTATE_0;
+						admPtr->flags = 0;
+
 					} else {
 						/* Done */
 						admPtr->BlockState = BLOCK_STATE_MEMIF_REQ;
@@ -844,41 +876,83 @@ static void DriveBlock( const NvM_BlockDescriptorType	*bPtr,
 			break;
 		} else {
 			/* Something failed */
+			DEBUG_PRINTF(">> Read/Write FAILED\n");
 			if( write ) {
-				DEBUG_PRINTF(">> Write FAILED\n");
 				admPtr->NumberOfWriteFailed++;
 				if( admPtr->NumberOfWriteFailed > NVM_MAX_NUMBER_OF_WRITE_RETRIES ) {
 					DEBUG_PRINTF(">> Write FAILED COMPLETELY (all retries)\n");
 					blockDone = 1;
+					admPtr->NumberOfWriteFailed = 0;
 				}
 			} else {
 				blockDone = 1;
 			}
 
+			/*
+			 * MEMIF have failed. Now what?
+			 * 1. Check if redundant, if so read the other block
+			 * 2. If point 1 fails and not redundant nor rom-block/initcallback,
+			 *   fail with MEMIF_BLOCK_INVALID, MEMIF_BLOCK_INCONSISTENT or  MEMIF_JOB_FAILED
+			 */
 			if( blockDone == 1 ) {
-				admPtr->BlockState = BLOCK_STATE_MEMIF_REQ; /* TODO, this really true for all result below */
-				AdminMultiReq.PendingErrorStatus = NVM_REQ_NOT_OK;
+				/* All write have failed or we are reading? */
+				if( 0 == handleRedundantBlock(bPtr,admPtr) ) {
+					/* block is NOT redundant or both blocks have failed */
+					if( bPtr->RomBlockDataAdress != NULL ) {
+						DEBUG_PRINTF("Copying ROM data to block\n");
+						memcpy(bPtr->RamBlockDataAddress, bPtr->RomBlockDataAdress,bPtr->NvBlockLength);
+						admPtr->ErrorStatus = NVM_REQ_OK;
+					} else if( bPtr->InitBlockCallback != NULL ) {
+						/* @req 3.1.5/NVM469 */
+						DEBUG_PRINTF("Filling block with default data\n");
+						bPtr->InitBlockCallback();
+						admPtr->ErrorStatus = NVM_REQ_OK;
+					} else {
 
-				switch( jobResult ) {
-				case MEMIF_BLOCK_INVALID:
-					/* @req 3.1.5/NVM342 */
-					admPtr->ErrorStatus = NVM_REQ_NV_INVALIDATED;
-					break;
-				case MEMIF_BLOCK_INCONSISTENT:
-					/* @req 3.1.5/NVM360 */
-					admPtr->ErrorStatus = NVM_REQ_INTEGRITY_FAILED;
-					DEM_REPORTERRORSTATUS(NVM_E_REQ_INTEGRITY_FAILED,DEM_EVENT_STATUS_FAILED);
-					break;
-				case MEMIF_JOB_FAILED:
-					/* @req 3.1.5/NVM361 */
-					admPtr->ErrorStatus = NVM_REQ_NOT_OK;
-					DEM_REPORTERRORSTATUS(NVM_E_REQ_FAILED,DEM_EVENT_STATUS_FAILED);
-					break;
-				default:
-					DEBUG_PRINTF("## Unexpected jobResult:%d\n",jobResult);
-					NVM_ASSERT(0);
-					break;
+						/*
+						 *
+						 * Returned status are:
+						 *
+						 * MEMIF_BLOCK_INVALID
+						 *   The block is currenlty under some strange service (Fee_InvalidateBlock)
+						 *
+						 * MEMIF_BLOCK_INCONSISTENT
+						 *   Ea/Fee have detected that something is strange with the block. This may
+						 *   happen for a virgin unit.
+						 *
+						 * MEMIF_JOB_FAILED
+						 *   We failed for some reason.
+						 *
+						 * At this point a lot of requirements NVM360, NVM342,etc will not be active
+						 * if there is a configured ROM block/InitCallback.
+						 */
+
+						admPtr->BlockState = BLOCK_STATE_MEMIF_REQ; /* TODO, this really true for all result below */
+						AdminMultiReq.PendingErrorStatus = NVM_REQ_NOT_OK;
+
+						switch (jobResult) {
+						case MEMIF_BLOCK_INVALID:
+							/* @req 3.1.5/NVM342 */
+							admPtr->ErrorStatus = NVM_REQ_NV_INVALIDATED;
+							break;
+						case MEMIF_BLOCK_INCONSISTENT:
+							/* @req 3.1.5/NVM360 but is overridden by NVM172 (implicit revovery) */
+							admPtr->ErrorStatus = NVM_REQ_INTEGRITY_FAILED;
+							DEM_REPORTERRORSTATUS(NVM_E_REQ_INTEGRITY_FAILED,DEM_EVENT_STATUS_FAILED);
+							break;
+						case MEMIF_JOB_FAILED:
+							/* @req 3.1.5/NVM361 */
+							admPtr->ErrorStatus = NVM_REQ_NOT_OK;
+							DEM_REPORTERRORSTATUS(NVM_E_REQ_FAILED,DEM_EVENT_STATUS_FAILED);
+							break;
+						default:
+							DEBUG_PRINTF("## Unexpected jobResult:%d\n",jobResult);
+							NVM_ASSERT(0);
+							break;
+						}
+					}
 				}
+
 			}
 		}
 		break;
@@ -967,63 +1041,43 @@ static void DriveBlock( const NvM_BlockDescriptorType	*bPtr,
 				 * 3. None of the above. Catastrophic failure. (NVM203)
 				 */
 
-				if( (admPtr->flags != 2) && bPtr->BlockManagementType == NVM_BLOCK_REDUNDANT ) {
-					/* According to 3.1.5/NVM137 we have 2 NV Blocks and 0..1 ROM Blocks */
-					/* Req 3.1.5/NVM199 , 3.1.5/NVM279 , 3.1.5/NVM317
-					 * 3.1.5/NVM288, 3.1.5/NVM315
-					 * */
-					NVM_ASSERT(bPtr->NvBlockNum == 2);		/* Configuration error */
-					if( admPtr->DataIndex == 0) {
-						admPtr->DataIndex = 1;
-					} else {
-						admPtr->DataIndex = 0;
-					}
-					admPtr->flags++;
-					if( admPtr->flags == 2 ) {
-						/* We have failed both NV Blocks */
-						DEBUG_PRINTF(" # Both redundant NV blocks failed\n");
-						admPtr->flags = 0;
-					} else {
-						/* Start over again with the other NV block */
-						DEBUG_PRINTF(" # First redundant NV block failed\n");
-						admPtr->BlockState = BLOCK_STATE_MEMIF_REQ;
-						break;	/* Break from BLOCK_SUBSTATE_0 */
-					}
-				}
-
-				if( bPtr->RomBlockDataAdress != NULL ) {
-					DEBUG_PRINTF("Copying ROM data to block\n");
-					memcpy(bPtr->RamBlockDataAddress, bPtr->RomBlockDataAdress,bPtr->NvBlockLength);
-					admPtr->BlockSubState = BLOCK_SUBSTATE_1;
-				} else {
-
-					/* @req 3.1.5/NVM469 */
-					if( bPtr->InitBlockCallback != NULL ) {
-
-						DEBUG_PRINTF("Filling block with default data\n");
-						bPtr->InitBlockCallback();
+				if( 0 == handleRedundantBlock(bPtr,admPtr) ) {
+					/* block is NOT redundant or both blocks have failed */
+					if( bPtr->RomBlockDataAdress != NULL ) {
+						DEBUG_PRINTF("Copying ROM data to block\n");
+						memcpy(bPtr->RamBlockDataAddress, bPtr->RomBlockDataAdress,bPtr->NvBlockLength);
 						admPtr->BlockSubState = BLOCK_SUBSTATE_1;
-
-						/* NVM085 is very vague here, but the says the application should be
-						 * able distinguish between when the init-callback have been called
-						 * or CRC is corrupt.
-						 */
-
-						/* The RAM CRC is at this point not calculated...so we must do this
-						 * .. so just stay in this state one more MainFunction.
-						 * */
-
 					} else {
 
-						DEBUG_PRINTF("### Block FAILED with NVM_REQ_INTEGRITY_FAILED\n");
+						/* @req 3.1.5/NVM469 */
+						if( bPtr->InitBlockCallback != NULL ) {
+
+							DEBUG_PRINTF("Filling block with default data\n");
+							bPtr->InitBlockCallback();
+							admPtr->BlockSubState = BLOCK_SUBSTATE_1;
+
+							/* NVM085 is very vague here, but the says the application should be
+							 * able distinguish between when the init-callback have been called
+							 * or CRC is corrupt.
+							 */
+
+							/* The RAM CRC is at this point not calculated...so we must do this
+							 * .. so just stay in this state one more MainFunction.
+							 * */
+
+						} else {
+
+							/* We have CRC mismatch -> FAIL */
+							DEBUG_PRINTF("### Block FAILED with NVM_REQ_INTEGRITY_FAILED\n");
 
 
-						/* @req 3.1.5/NVM203 */
-						DEM_REPORTERRORSTATUS(NVM_E_INTEGRITY_FAILED,DEM_EVENT_STATUS_FAILED);
-						/* @req 3.1.5/NVM204 */
-						admPtr->ErrorStatus = NVM_REQ_INTEGRITY_FAILED;
-						admPtr->BlockState = BLOCK_STATE_MEMIF_REQ;
-						blockDone = 1;
+							/* @req 3.1.5/NVM203 */
+							DEM_REPORTERRORSTATUS(NVM_E_INTEGRITY_FAILED,DEM_EVENT_STATUS_FAILED);
+							/* @req 3.1.5/NVM204 */
+							admPtr->ErrorStatus = NVM_REQ_INTEGRITY_FAILED;
+							admPtr->BlockState = BLOCK_STATE_MEMIF_REQ;
+							blockDone = 1;
+						}
 					}
 				}
 			}
@@ -1065,7 +1119,7 @@ static void DriveBlock( const NvM_BlockDescriptorType	*bPtr,
 
 		/*  @req 3.1.5/NVM281 */
 		if( bPtr->SingleBlockCallback != NULL ) {
-			bPtr->SingleBlockCallback(NVM_READ_ALL_ID, admPtr->ErrorStatus);
+			bPtr->SingleBlockCallback(serviceId, admPtr->ErrorStatus);
 		}
 
 		if( multiBlock ) {
@@ -1081,6 +1135,11 @@ static void DriveBlock( const NvM_BlockDescriptorType	*bPtr,
 				}
 				nvmState = NVM_IDLE;
 				nvmSubState = 0;
+
+				/*  @req 3.1.5/NVM468 */
+				if( NvM_Config.Common.MultiBlockCallback != NULL ) {
+					NvM_Config.Common.MultiBlockCallback(serviceId, AdminMultiBlock.ErrorStatus);
+				}
 			}
 		} else {
 			nvmState = NVM_IDLE;
@@ -1107,22 +1166,19 @@ static void ReadAllMain(void)
 	 */
 
 	/* Skip blocks that are skipped */
+	while (	(AdminMultiReq.currBlockIndex < NVM_NUM_OF_NVRAM_BLOCKS) ) {
 
-	while (	(AdminBlock[AdminMultiReq.currBlockIndex].ErrorStatus == NVM_REQ_BLOCK_SKIPPED) ) {
-		if( (AdminMultiReq.currBlockIndex < NVM_NUM_OF_NVRAM_BLOCKS) ) {
-			AdminMultiReq.currBlockIndex++;
-		} else {
-			return;
+		if( AdminBlock[AdminMultiReq.currBlockIndex].ErrorStatus != NVM_REQ_BLOCK_SKIPPED) {
+			DriveBlock(	&NvM_Config.BlockDescriptor[AdminMultiReq.currBlockIndex],
+							&AdminBlock[AdminMultiReq.currBlockIndex],
+							NULL,
+							false,
+							true, false);
+			break;
 		}
+		AdminMultiReq.currBlockIndex++;
 	}
-
-	DriveBlock(	&NvM_Config.BlockDescriptor[AdminMultiReq.currBlockIndex],
-					&AdminBlock[AdminMultiReq.currBlockIndex],
-					NULL,
-					false,
-					true, false);
 }
-
 
 /*
  * Request writing of a block to MemIf
@@ -1198,21 +1254,18 @@ static boolean WriteAllInit(void)
  */
 static void WriteAllMain(void)
 {
+	while (	(AdminMultiReq.currBlockIndex < NVM_NUM_OF_NVRAM_BLOCKS) ) {
 
-	while (	(AdminBlock[AdminMultiReq.currBlockIndex].ErrorStatus == NVM_REQ_BLOCK_SKIPPED) ) {
-		if( (AdminMultiReq.currBlockIndex < NVM_NUM_OF_NVRAM_BLOCKS) ) {
-			AdminMultiReq.currBlockIndex++;
-		} else {
-			return;
+		if( AdminBlock[AdminMultiReq.currBlockIndex].ErrorStatus != NVM_REQ_BLOCK_SKIPPED) {
+			DriveBlock(	&NvM_Config.BlockDescriptor[AdminMultiReq.currBlockIndex],
+							&AdminBlock[AdminMultiReq.currBlockIndex],
+							NULL,
+							true,
+							true, false );
+			break;
 		}
+		AdminMultiReq.currBlockIndex++;
 	}
-
-	DriveBlock(	&NvM_Config.BlockDescriptor[AdminMultiReq.currBlockIndex],
-					&AdminBlock[AdminMultiReq.currBlockIndex],
-					NULL,
-					true,
-					true, false );
-
 }
 
 
@@ -1314,6 +1367,7 @@ void NvM_ReadAll(void)
 	Irq_Save(state);
 	AdminMultiReq.state = NVM_READ_ALL;
 	AdminMultiBlock.ErrorStatus = NVM_REQ_PENDING;
+	AdminMultiReq.serviceId = NVM_READ_ALL_ID;
 	Irq_Restore(state);
 }
 
@@ -1333,6 +1387,7 @@ void NvM_WriteAll(void)
 	Irq_Save(state);
 	AdminMultiReq.state = NVM_WRITE_ALL;
 	AdminMultiBlock.ErrorStatus = NVM_REQ_PENDING;
+	AdminMultiReq.serviceId = NVM_WRITE_ALL_ID;
 	Irq_Restore(state);
 }
 
@@ -1376,14 +1431,12 @@ Std_ReturnType NvM_GetErrorStatus(NvM_BlockIdType blockId, uint8 *requestResultP
  */
 Std_ReturnType NvM_SetRamBlockStatus(NvM_BlockIdType blockId, boolean blockChanged)
 {
-	const NvM_BlockDescriptorType *	bPtr;
 	AdministrativeBlockType * 		admPtr;
 	Nvm_QueueType qEntry;
 	int rv;
 
 	VALIDATE_RV(blockId < NVM_NUM_OF_NVRAM_BLOCKS+1, NVM_SET_RAM_BLOCK_STATUS_ID, NVM_E_PARAM_BLOCK_ID, E_NOT_OK);
 
-	bPtr = &NvM_Config.BlockDescriptor[blockId-1];
 	admPtr = &AdminBlock[blockId-1];
 
 	VALIDATE_RV(nvmState != NVM_UNINITIALIZED, NVM_SET_RAM_BLOCK_STATUS_ID, NVM_E_NOT_INITIALIZED, E_NOT_OK);	/** @req NVM497 */
@@ -1393,6 +1446,7 @@ Std_ReturnType NvM_SetRamBlockStatus(NvM_BlockIdType blockId, boolean blockChang
 	qEntry.blockId = blockId;
 	qEntry.op = NVM_SETRAMBLOCKSTATUS;
 	qEntry.blockChanged = blockChanged;
+	qEntry.serviceId = NVM_SET_RAM_BLOCK_STATUS_ID;
 	rv = CirqBuffPush(&nvmQueue,&qEntry);
 	NVM_ASSERT(rv == 0 );
 
@@ -1464,6 +1518,7 @@ Std_ReturnType NvM_RestoreBlockDefaults( NvM_BlockIdType blockId, uint8* NvM_Des
 	qEntry.op = NVM_RESTORE_BLOCK_DEFAULTS;
 	qEntry.blockId = blockId;
 	qEntry.dataPtr = (uint8_t *)NvM_DestPtr;
+	qEntry.serviceId = NVM_RESTORE_BLOCK_DEFAULTS_ID;
 	rv = CirqBuffPush(&nvmQueue,&qEntry);
 	NVM_ASSERT(rv == 0 );
 
@@ -1553,6 +1608,7 @@ Std_ReturnType NvM_ReadBlock( NvM_BlockIdType blockId, uint8* NvM_DstPtr )
 	qEntry.op = NVM_READ_BLOCK;
 	qEntry.blockId = blockId;
 	qEntry.dataPtr = NvM_DstPtr;
+	qEntry.serviceId = NVM_READ_BLOCK_ID;
 	rv = CirqBuffPush(&nvmQueue,&qEntry);
 	NVM_ASSERT(rv == 0 );
 
@@ -1597,6 +1653,7 @@ Std_ReturnType NvM_WriteBlock( NvM_BlockIdType blockId, const uint8* NvM_SrcPtr 
 	qEntry.op = NVM_WRITE_BLOCK;
 	qEntry.blockId = blockId;
 	qEntry.dataPtr = (uint8_t *)NvM_SrcPtr;
+	qEntry.serviceId = NVM_WRITE_BLOCK_ID;
 	rv = CirqBuffPush(&nvmQueue,&qEntry);
 	NVM_ASSERT(rv == 0 );
 
@@ -1635,8 +1692,9 @@ Std_ReturnType NvM_WriteBlock( NvM_BlockIdType blockId, const uint8* NvM_SrcPtr 
 Std_ReturnType NvM_SetDataIndex( NvM_BlockIdType blockId, uint8 dataIndex ) {
 #if  ( NVM_DEV_ERROR_DETECT == STD_ON )
 	const NvM_BlockDescriptorType *	bPtr = &NvM_Config.BlockDescriptor[blockId-1];
-	AdministrativeBlockType * 		admPtr = &AdminBlock[blockId-1];
 #endif
+	AdministrativeBlockType * 		admPtr = &AdminBlock[blockId-1];
+
 	Nvm_QueueType qEntry;
 	int rv;
 
@@ -1652,6 +1710,37 @@ Std_ReturnType NvM_SetDataIndex( NvM_BlockIdType blockId, uint8 dataIndex ) {
 	qEntry.op = NVM_SETDATAINDEX;
 	qEntry.blockId = blockId;
 	qEntry.dataIndex = dataIndex;
+	qEntry.serviceId = NVM_SET_DATA_INDEX_ID;
+	rv = CirqBuffPush(&nvmQueue,&qEntry);
+	NVM_ASSERT(rv == 0 );
+
+	/* req 3.1.5/NVM185 */
+	admPtr->ErrorStatus = NVM_REQ_PENDING;
+	return E_OK;
+}
+
+
+Std_ReturnType NvM_GetDataIndex( NvM_BlockIdType blockId, uint8 *dataIndexPtr ) {
+#if  ( NVM_DEV_ERROR_DETECT == STD_ON )
+	const NvM_BlockDescriptorType *	bPtr = &NvM_Config.BlockDescriptor[blockId-1];
+#endif
+	AdministrativeBlockType * 		admPtr = &AdminBlock[blockId-1];
+	Nvm_QueueType qEntry;
+	int rv;
+
+	NVM_ASSERT( blockId >= 2 );	/* No support for lower numbers, yet */
+
+	VALIDATE_RV(nvmState != NVM_UNINITIALIZED, NVM_GET_DATA_INDEX_ID, NVM_E_NOT_INITIALIZED, E_NOT_OK);
+	VALIDATE_RV(blockId < NVM_NUM_OF_NVRAM_BLOCKS+1, NVM_GET_DATA_INDEX_ID, NVM_E_PARAM_BLOCK_ID, E_NOT_OK);
+	VALIDATE_RV(bPtr->BlockManagementType != NVM_BLOCK_NATIVE ,  NVM_GET_DATA_INDEX_ID, NVM_E_PARAM_BLOCK_TYPE , E_NOT_OK);
+	VALIDATE_RV( (dataIndexPtr != NULL) , NVM_GET_DATA_INDEX_ID, NVM_E_PARAM_DATA  ,E_NOT_OK);
+	VALIDATE_RV( (admPtr->ErrorStatus != NVM_REQ_PENDING), NVM_GET_DATA_INDEX_ID, NVM_E_BLOCK_PENDING , E_NOT_OK);
+
+	qEntry.blockId = blockId;
+	qEntry.op = NVM_GETDATAINDEX;
+	qEntry.blockId = blockId;
+	qEntry.dataPtr = dataIndexPtr;
+	qEntry.serviceId = NVM_GET_DATA_INDEX_ID;
 	rv = CirqBuffPush(&nvmQueue,&qEntry);
 	NVM_ASSERT(rv == 0 );
 
@@ -1686,6 +1775,7 @@ void NvM_MainFunction(void)
 			admBlock = &AdminBlock[qEntry.blockId-1];
 			nvmSubState = 0;
 			admBlock->ErrorStatus = NVM_REQ_PENDING;
+			serviceId = qEntry.serviceId;
 			DEBUG_PRINTF("### Popped Single FIFO : %s\n",StateToStr[qEntry.op]);
 			DEBUG_PRINTF("### CRC On:%d Ram:%d Type:%d\n",nvmBlock->BlockUseCrc, nvmBlock->CalcRamBlockCrc, nvmBlock->BlockCRCType );
 			DEBUG_PRINTF("### RAM:%x ROM:%x\n", nvmBlock->RamBlockDataAddress, nvmBlock->RomBlockDataAdress );
@@ -1696,6 +1786,7 @@ void NvM_MainFunction(void)
 				nvmSubState = 0;
 				nvmBlock = 0;
 				admBlock = 0;
+				serviceId = AdminMultiReq.serviceId;
 				AdminMultiReq.state = NVM_UNINITIALIZED;
 
 				DEBUG_PRINTF("### Popped MULTI\n");
@@ -1762,7 +1853,7 @@ void NvM_MainFunction(void)
 		admBlock->ErrorStatus = NVM_REQ_OK;
 		break;
 	case NVM_GETDATAINDEX:
-		NVM_ASSERT(0);
+		*qEntry.dataPtr = admBlock->DataIndex;
 		nvmState = NVM_IDLE;
 		nvmSubState = 0;
 		admBlock->ErrorStatus = NVM_REQ_OK;

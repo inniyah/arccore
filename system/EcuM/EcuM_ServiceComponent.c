@@ -17,6 +17,7 @@
 #include "Rte_EcuM.h"
 #else
 #include "EcuM.h"
+#include "EcuM_Generated_Types.h"
 #include "EcuM_Internals.h"
 #endif
 
@@ -28,7 +29,7 @@ Std_ReturnType EcuM_ShutdownTarget_GetShutdownTarget(EcuM_StateType* target, UIn
 	return EcuM_GetShutdownTarget(target, (uint8*)mode);
 }
 
-Std_ReturnType EcuM_ShutdownTarget_SelectShutdowntarget(EcuM_StateType target, UInt8 mode) {
+Std_ReturnType EcuM_ShutdownTarget_SelectShutdownTarget(EcuM_StateType target, UInt8 mode) {
 	return EcuM_SelectShutdownTarget(target, (uint8)mode);
 }
 

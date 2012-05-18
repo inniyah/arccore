@@ -1,6 +1,7 @@
 
 _BOARD_COMMON_MK:=y  # Include guard for backwards compatability
 
+
 obj-$(CFG_PPC) += crt0.o
 obj-$(CFG_HC1X) += crt0.o
 vpath-$(CFG_ARM_CM3) += $(ROOTDIR)/$(ARCH_PATH-y)/kernel
@@ -74,6 +75,7 @@ inc-$(CFG_MPC55XX) +=  $(ROOTDIR)/$(ARCH_PATH-y)/delivery/mpc5500_h7f/include
 obj-$(USE_CAN) += Can.o
 obj-$(USE_CAN)-$(CFG_PPC) += Can_PBcfg.o
 obj-$(USE_CAN)-$(CFG_ARM_CM3) += Can_Lcfg.o
+obj-$(USE_CAN)-$(CFG_ARM_CR4) += Can_Lcfg.o
 obj-$(USE_CAN)-$(CFG_HC1X) += Can_Lcfg.o
 
 # CanIf
@@ -96,6 +98,7 @@ obj-$(USE_PORT) += Port.o
 obj-$(USE_PORT) += Port_Cfg.o
 
 obj-$(USE_ADC)-$(CFG_MPC560X) += Adc_560x.o
+obj-$(USE_ADC)-$(CFG_MPC5668) += Adc_560x.o
 obj-$(USE_ADC)-$(CFG_HC1X) += Adc.o
 obj-$(USE_ADC)-$(CFG_ARM_CM3) += Adc.o
 obj-$(USE_ADC)-$(CFG_MPC5516) += Adc_eQADC.o
@@ -105,10 +108,10 @@ obj-$(USE_ADC) += Adc_Internal.o
 vpath-y += $(ROOTDIR)/drivers
 inc-y += $(ROOTDIR)/drivers
 
-# Crc
-vpath-$(USE_CRC32) += $(ROOTDIR)/system/Crc
-obj-$(USE_CRC32) += Crc_32.o
-obj-$(USE_CRC16) += Crc_16.o
+# Crc (Include when using NvM)
+vpath-$(USE_NVM) += $(ROOTDIR)/system/Crc
+obj-$(USE_NVM) += Crc_32.o
+obj-$(USE_NVM) += Crc_16.o
 
 # J1939Tp
 obj-$(USE_J1939TP) += J1939Tp.o
@@ -128,7 +131,7 @@ obj-$(USE_SPI) += Spi_Lcfg.o
 # NvM
 obj-$(USE_NVM) += NvM.o
 obj-$(USE_NVM) += NvM_Cfg.o
-obj-$(USE_NVM)-$(CFG_NVM_USE_SERVICE_COMPONENT) += NvmM_ServiceComponent.o
+obj-$(USE_NVM)-$(CFG_NVM_USE_SERVICE_COMPONENT) += NvM_ServiceComponent.o
 inc-$(USE_NVM) += $(ROOTDIR)/memory/NvM
 vpath-$(USE_NVM) += $(ROOTDIR)/memory/NvM
 
@@ -245,11 +248,10 @@ inc-$(USE_COM) += $(ROOTDIR)/communication/PduR
 vpath-$(USE_PDUR) += $(ROOTDIR)/communication/PduR
 
 # IO Hardware Abstraction
-obj-$(USE_IOHWAB) += IoHwAb.o
 obj-$(USE_IOHWAB) += IoHwAb_Digital.o
 obj-$(USE_IOHWAB) += IoHwAb_Analog.o
 obj-$(USE_IOHWAB) += IoHwAb_Pwm.o
-obj-$(USE_IOHWAB)-$(CFG_IOHWAB_USE_SERVICE_COMPONENT) += IoHwAb_ServiceComponent.o
+
 
 #Dem
 obj-$(USE_DEM) += Dem.o
@@ -283,7 +285,8 @@ vpath-$(USE_TCF) += $(ROOTDIR)/common/tcf
 #SLEEP
 obj-$(USE_SLEEP) += sleep.o
 
-
+# Circular Buffer (always)
+obj-y += cirq_buffer.o
 
 ifeq ($(COMPILER),cw)
 SELECT_CLIB?=CLIB_CW

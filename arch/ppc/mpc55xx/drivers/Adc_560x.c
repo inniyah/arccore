@@ -13,9 +13,11 @@
  * for more details.
  * -------------------------------- Arctic Core ------------------------------*/
 
+/* ----------------------------[includes]------------------------------------*/
+
 #include <assert.h>
 #include <stdlib.h>
-//#include "System.h"
+#include "Std_Types.h"
 #include "mpc55xx.h"
 #include "Modules.h"
 #include "Mcu.h"
@@ -26,6 +28,8 @@
 #include "irq.h"
 #include "arc.h"
 #include "Adc_Internal.h"
+/* ----------------------------[private define]------------------------------*/
+
 
 /* Uncomment and use DMA for 5606 only if you now what you are doing */
 #define DONT_USE_DMA_IN_ADC_MPC560X
@@ -40,16 +44,36 @@
 	#error Adc is configured to use Dma but the module is not enabled.
 #endif
 
-/* Function prototypes. */
-static void Adc_ConfigureADC (const Adc_ConfigType *ConfigPtr);
-static void Adc_ConfigureADCInterrupts (void);
+#if defined(CFG_MPC5668)
+#define ADC_0				ADC
+#endif
 
-void Adc_GroupConversionComplete (Adc_GroupType group);
+#if defined(CFG_MPC5668)
+#define ADC_EOC_INT 	ADC_A_EOC
+#define ADC_ER_INT 		ADC_A_ERR
+#define	ADC_WD_INT		ADC_A_WD
+#endif
+
+
+
+/* ----------------------------[private macro]-------------------------------*/
+/* ----------------------------[private typedef]-----------------------------*/
+/* ----------------------------[private function prototypes]-----------------*/
+/* ----------------------------[private variables]---------------------------*/
 
 /* static variable declarations */
 static Adc_StateType adcState = ADC_UNINIT;
 static const Adc_ConfigType *AdcConfigPtr;      /* Pointer to configuration structure. */
 
+/* ----------------------------[private functions]---------------------------*/
+
+/* Function prototypes. */
+static void Adc_ConfigureADC (const Adc_ConfigType *ConfigPtr);
+static void Adc_ConfigureADCInterrupts (void);
+void Adc_GroupConversionComplete (Adc_GroupType group);
+
+
+/* ----------------------------[public functions]----------------------------*/
 
 #if (ADC_DEINIT_API == STD_ON)
 void Adc_DeInit ()
@@ -233,6 +257,10 @@ void Adc_GroupConversionComplete (Adc_GroupType group)
   if(ADC_ACCESS_MODE_SINGLE == adcGroup->accessMode )
   {
 	  adcGroup->status->groupStatus = ADC_STREAM_COMPLETED;
+
+    /* Disable trigger normal conversions for ADC0 */
+    ADC_0.MCR.B.NSTART=0;
+
 	  /* Call notification if enabled. */
 	#if (ADC_GRP_NOTIF_CAPABILITY == STD_ON)
 	  if (adcGroup->status->notifictionEnable && adcGroup->groupCallback != NULL)
@@ -240,8 +268,6 @@ void Adc_GroupConversionComplete (Adc_GroupType group)
 		  adcGroup->groupCallback();
 	  }
 	#endif
-		  /* Disable trigger normal conversions for ADC0 */
-		  ADC_0.MCR.B.NSTART=0;
   }
   else
   {
@@ -266,14 +292,15 @@ void Adc_GroupConversionComplete (Adc_GroupType group)
 		  /* All sample completed. */
 		  adcGroup->status->groupStatus = ADC_STREAM_COMPLETED;
 
+      /* Disable trigger normal conversions for ADC0 */
+      ADC_0.MCR.B.NSTART=0;
+
 		  /* Call notification if enabled. */
 		#if (ADC_GRP_NOTIF_CAPABILITY == STD_ON)
 		  if (adcGroup->status->notifictionEnable && adcGroup->groupCallback != NULL){
 			adcGroup->groupCallback();
 		  }
 		#endif
-		  /* Disable trigger normal conversions for ADC0 */
-		  ADC_0.MCR.B.NSTART=0;
 		}
 	}
 	else if(ADC_STREAM_BUFFER_CIRCULAR == adcGroup->streamBufferMode)
@@ -294,8 +321,10 @@ void Adc_GroupConversionComplete (Adc_GroupType group)
 		else
 		{
 		  /* Sample completed. */
+
 		  /* Disable trigger normal conversions for ADC*/
 		  ADC_0.MCR.B.NSTART=0;
+
 		  adcGroup->status->groupStatus = ADC_STREAM_COMPLETED;
 		  /* Call notification if enabled. */
 		#if (ADC_GRP_NOTIF_CAPABILITY == STD_ON)
