@@ -76,6 +76,9 @@
 #define CAN_CTRL_LOOPBACK                       (1UL<<5)
 #define CAN_CTRL_FIFO                           (1UL<<6)
 
+#define CAN_CTRL_ERROR_PROCESSING_INTERRUPT    (1UL<<7)
+#define CAN_CTRL_ERRO_PROCESSING_POLLING      0
+
 #endif
 
 #include "Std_Types.h"
@@ -323,6 +326,7 @@ void Can_Cbk_CheckWakeup( uint8 controller );
 void Can_MainFunction_Write( void );
 void Can_MainFunction_Read( void );
 void Can_MainFunction_BusOff( void );
+void Can_MainFunction_Error( void );
 void Can_MainFunction_Wakeup( void );
 
 void Can_Arc_GetStatistics( uint8 controller, Can_Arc_StatisticsType * stat);
