@@ -63,6 +63,12 @@
 #define DDDDI_LEN 2
 #define DYNDEF_ALFID_INDEX 4
 #define DYNDEF_ADDRESS_START_INDEX 5
+/* InputOutputControlByIdentifier */
+#define IOI_INDEX 1
+#define IOI_LEN 2
+#define IOCP_INDEX 3
+#define IOCP_LEN 1
+#define COR_INDEX 4
 
 #define BYTES_TO_DTC(hb, mb, lb)	(((uint32)(hb) << 16) | ((uint32)(mb) << 8) | (uint32)(lb))
 #define DTC_HIGH_BYTE(dtc)			(((uint32)(dtc) >> 16) & 0xFFu)
@@ -77,9 +83,17 @@ typedef enum {
 typedef struct {
 	boolean resetPending;
 	PduIdType resetPduId;
+	Dcm_EcuResetType resetType;
 } DspUdsEcuResetDataType;
 
+typedef struct {
+	boolean sessionPending;
+	PduIdType sessionPduId;
+	Dcm_SesCtrlType session;
+} DspUdsSessionControlDataType;
+
 static DspUdsEcuResetDataType dspUdsEcuResetData;
+static DspUdsSessionControlDataType dspUdsSessionControlData;
 static boolean dspWritePending;
 
 typedef struct {
@@ -151,6 +165,7 @@ void DspInit(void)
 {
 	dspUdsSecurityAccesData.reqInProgress = FALSE;
 	dspUdsEcuResetData.resetPending = FALSE;
+	dspUdsSessionControlData.sessionPending = FALSE;
 
 	dspWritePending = FALSE;
 	dspMemoryState=DCM_MEMORY_UNUSED;
@@ -299,7 +314,7 @@ static Std_ReturnType askApplicationForSessionPermission(Dcm_SesCtrlType newSess
 }
 
 
-void DspUdsDiagnosticSessionControl(const PduInfoType *pduRxData, PduInfoType *pduTxData)
+void DspUdsDiagnosticSessionControl(const PduInfoType *pduRxData, PduIdType txPduId, PduInfoType *pduTxData)
 {
 	/** @req DCM250 */
 	const Dcm_DspSessionRowType *sessionRow = DCM_Config.Dsp->DspSession->DspSessionRow;
@@ -317,6 +332,11 @@ void DspUdsDiagnosticSessionControl(const PduInfoType *pduRxData, PduInfoType *p
 			result = askApplicationForSessionPermission(reqSessionType);
 			if (result == E_OK) {
 				DslSetSesCtrlType(reqSessionType);		/** @req DCM311 */
+
+				dspUdsSessionControlData.sessionPending = TRUE;
+				dspUdsSessionControlData.session = reqSessionType;
+				dspUdsSessionControlData.sessionPduId = txPduId;
+
 				// Create positive response
 				pduTxData->SduDataPtr[1] = reqSessionType;
 				pduTxData->SduLength = 2;
@@ -348,12 +368,15 @@ void DspUdsEcuReset(const PduInfoType *pduRxData, PduIdType txPduId, PduInfoType
 
 		switch (reqResetType)
 		{
-		case 0x01:	// Hard reset
+		case DCM_HARD_RESET:
+		case DCM_KEY_OFF_ON_RESET:
+		case DCM_SOFT_RESET:
 			// TODO: Ask application for permission (Dcm373) (Dcm375) (Dcm377)
 
 			// Schedule the reset
 			dspUdsEcuResetData.resetPending = TRUE;
 			dspUdsEcuResetData.resetPduId = txPduId;
+			dspUdsEcuResetData.resetType = reqResetType;
 
 			// Create positive response
 			pduTxData->SduDataPtr[1] = reqResetType;
@@ -1672,11 +1695,21 @@ void DspDcmConfirmation(PduIdType confirmPduId)
 	if (dspUdsEcuResetData.resetPending) {
 		if (confirmPduId == dspUdsEcuResetData.resetPduId) {
 			dspUdsEcuResetData.resetPending = FALSE;
+			Dcm_EcuReset(dspUdsEcuResetData.resetType);
+			if(DCM_HARD_RESET == dspUdsEcuResetData.resetType) {
 #if defined(USE_MCU) && ( MCU_PERFORM_RESET_API == STD_ON )
-			Mcu_PerformReset();
+				Mcu_PerformReset();
 #else
-			DET_REPORTERROR(MODULE_ID_DCM, 0, DCM_UDS_RESET_ID, DCM_E_NOT_SUPPORTED);
+				DET_REPORTERROR(MODULE_ID_DCM, 0, DCM_UDS_RESET_ID, DCM_E_NOT_SUPPORTED);
 #endif
+			}
+		}
+	}
+
+	if (dspUdsSessionControlData.sessionPending) {
+		if (confirmPduId == dspUdsSessionControlData.sessionPduId) {
+			dspUdsSessionControlData.sessionPending = FALSE;
+			Dcm_DiagnosticSessionControl(dspUdsSessionControlData.session);
 		}
 	}
 }
@@ -2685,6 +2718,23 @@ void DspDynamicallyDefineDataIdentifier(const PduInfoType *pduRxData,PduInfoType
 	DsdDspProcessingDone(responseCode);
 }
 
+static const Dcm_DspDidControlRecordSizesType* getControlRecordSizesForControlParameter(uint8 controlParam, const Dcm_DspDidControlType *DidControl)
+{
+	switch( controlParam )
+	{
+	case DCM_RETURN_CONTROL_TO_ECU:
+		return DidControl->DspDidReturnControlToEcu;
+	case DCM_RESET_TO_DEFAULT:
+		return DidControl->DspDidResetToDefault;
+	case DCM_FREEZE_CURRENT_STATE:
+		return DidControl->DspDidFreezeCurrentState;
+	case DCM_SHORT_TERM_ADJUSTMENT:
+		return DidControl->DspDidShortTermAdjustment;
+	default:
+		return NULL;
+	}
+}
+
 static Dcm_NegativeResponseCodeType DspIOControlReturnControlToECU(const Dcm_DspDidType *DidPtr,const PduInfoType *pduRxData,PduInfoType *pduTxData)
 {
 	Dcm_NegativeResponseCodeType responseCode = DCM_E_POSITIVERESPONSE;
@@ -2916,48 +2966,83 @@ void DspIOControlByDataIdentifier(const PduInfoType *pduRxData,PduInfoType *pduT
 {
 	uint16 didNr;
 	const Dcm_DspDidType *DidPtr = NULL;
-	Dcm_NegativeResponseCodeType responseCode = DCM_E_POSITIVERESPONSE;
-	didNr = (pduRxData->SduDataPtr[1] << 8 & DCM_DID_HIGH_MASK) + (pduRxData->SduDataPtr[2] & DCM_DID_LOW_MASK);
-	if(pduRxData->SduLength > 3)
+	const Dcm_DspDidControlType *DidControl = NULL;
+	const Dcm_DspDidControlRecordSizesType* controlRecordSizes = NULL;
+	Dcm_NegativeResponseCodeType responseCode = DCM_E_REQUESTOUTOFRANGE;
+
+	if(pduRxData->SduLength > SID_LEN + IOI_LEN + IOCP_LEN)
 	{
+		didNr = (pduRxData->SduDataPtr[IOI_INDEX] << 8 & DCM_DID_HIGH_MASK) + (pduRxData->SduDataPtr[IOI_INDEX+1] & DCM_DID_LOW_MASK);
 		if(TRUE == lookupDid(didNr, &DidPtr))
 		{
-			if(FALSE == DidPtr->DspDidUsePort)
+			DidControl = DidPtr->DspDidInfoRef->DspDidAccess.DspDidControl;
+			if(NULL != DidControl)
 			{
-				if(NULL != DidPtr->DspDidInfoRef->DspDidAccess.DspDidControl)
+				if(TRUE == DspCheckSessionLevel(DidControl->DspDidControlSessionRef))
 				{
-					if(TRUE == DspCheckSessionLevel(DidPtr->DspDidInfoRef->DspDidAccess.DspDidControl->DspDidControlSessionRef))
+					if(TRUE == DspCheckSecurityLevel(DidControl->DspDidControlSecurityLevelRef))
 					{
-						if(TRUE == DspCheckSecurityLevel(DidPtr->DspDidInfoRef->DspDidAccess.DspDidControl->DspDidControlSecurityLevelRef))
+						controlRecordSizes = getControlRecordSizesForControlParameter(pduRxData->SduDataPtr[IOCP_INDEX], DidControl);
+						if( controlRecordSizes != NULL )
 						{
-							switch(pduRxData->SduDataPtr[3])
+
+							if( pduRxData->SduLength == SID_LEN + IOI_LEN + IOCP_LEN + controlRecordSizes->DspDidControlOptionRecordSize + controlRecordSizes->DspDidControlEnableMaskRecordSize )
 							{
+								responseCode = DCM_E_REQUESTOUTOFRANGE; // Value to use if no callback found
+
+								uint8* controlOptionRecord = &pduRxData->SduDataPtr[COR_INDEX];
+								uint8* controlEnableMaskRecord = &pduRxData->SduDataPtr[COR_INDEX + controlRecordSizes->DspDidControlOptionRecordSize];
+
+								switch(pduRxData->SduDataPtr[IOCP_INDEX])
+								{
 								case DCM_RETURN_CONTROL_TO_ECU:
-									responseCode = DspIOControlReturnControlToECU(DidPtr,pduRxData,pduTxData);
+									if(DidPtr->DspDidReturnControlToEcuFnc != NULL)
+									{
+										DidPtr->DspDidReturnControlToEcuFnc(controlOptionRecord,controlEnableMaskRecord,
+																			&pduTxData->SduDataPtr[SID_LEN+IOI_LEN+IOCP_LEN],&responseCode);
+									}
 									break;
 								case DCM_RESET_TO_DEFAULT:
-									responseCode = DspIOControlResetToDefault(DidPtr,pduRxData,pduTxData);								
+									if(DidPtr->DspDidResetToDefaultFnc != NULL)
+									{
+										DidPtr->DspDidResetToDefaultFnc(controlOptionRecord,controlEnableMaskRecord,
+																			&pduTxData->SduDataPtr[SID_LEN+IOI_LEN+IOCP_LEN],&responseCode);
+									}
 									break;
 								case DCM_FREEZE_CURRENT_STATE:
-									responseCode = DspIOControlFreezeCurrentState(DidPtr,pduRxData,pduTxData);
+									if(DidPtr->DspDidFreezeCurrentStateFnc != NULL)
+									{
+										DidPtr->DspDidFreezeCurrentStateFnc(controlOptionRecord,controlEnableMaskRecord,
+																			&pduTxData->SduDataPtr[SID_LEN+IOI_LEN+IOCP_LEN],&responseCode);
+									}
 									break;
 								case DCM_SHORT_TERM_ADJUSTMENT:
-									responseCode = DspIOControlShortTeamAdjustment(DidPtr,pduRxData,pduTxData);
+									if(DidPtr->DspDidShortTermAdjustmentFnc != NULL)
+									{
+										DidPtr->DspDidShortTermAdjustmentFnc(controlOptionRecord,controlEnableMaskRecord,
+																			&pduTxData->SduDataPtr[SID_LEN+IOI_LEN+IOCP_LEN],&responseCode);
+									}
 									break;
 								default:
 									responseCode = DCM_E_REQUESTOUTOFRANGE;
 									break;
-								
+
+								}
+
+							}
+							else
+							{
+								responseCode = DCM_E_INCORRECTMESSAGELENGTHORINVALIDFORMAT;
 							}
 						}
 						else
 						{
-							responseCode = DCM_E_SECUTITYACCESSDENIED;
+							responseCode = DCM_E_REQUESTOUTOFRANGE;
 						}
 					}
 					else
 					{
-						responseCode = DCM_E_REQUESTOUTOFRANGE;
+						responseCode = DCM_E_SECUTITYACCESSDENIED;
 					}
 				}
 				else
@@ -2967,8 +3052,7 @@ void DspIOControlByDataIdentifier(const PduInfoType *pduRxData,PduInfoType *pduT
 			}
 			else
 			{
-				/* if UsePort == True, NRC 0x10 */
-				responseCode = DCM_E_GENERALREJECT;
+				responseCode = DCM_E_REQUESTOUTOFRANGE;
 			}
 		}
 		else
@@ -2982,8 +3066,10 @@ void DspIOControlByDataIdentifier(const PduInfoType *pduRxData,PduInfoType *pduT
 	}
 	if(responseCode == DCM_E_POSITIVERESPONSE)
 	{
+		pduTxData->SduLength = SID_LEN + IOI_LEN + IOCP_LEN + controlRecordSizes->DspDidControlStatusRecordSize;
 		pduTxData->SduDataPtr[1] = pduRxData->SduDataPtr[1];
 		pduTxData->SduDataPtr[2] = pduRxData->SduDataPtr[2];
+		pduTxData->SduDataPtr[3] = pduRxData->SduDataPtr[3];
 	}
 	DsdDspProcessingDone(responseCode);
 }
