@@ -514,7 +514,7 @@ static void Can_RxIsr(int unit) {
         {
           GET_CALLBACKS()->RxIndication(hohObj->CanObjectId,
                                         id,
-                                        canHw->RXFG.dlr,
+                                        canHw->RXFG.dlr & 0x0f,
                                         (uint8 *)&canHw->RXFG.ds0 ); // Next layer will copy
         }
         // Increment statistics
@@ -988,6 +988,15 @@ void Can_MainFunction_Wakeup( void ) {
 }
 
 
+void Can_MainFunction_Write( void ) {
+    /* NOT SUPPORTED */
+}
+
+void Can_MainFunction_Error( void ) {
+    /* NOT SUPPORTED */
+}
+
+
 /**
  * Get send/receive/error statistics for a controller
  *
@@ -1058,6 +1067,7 @@ void Can_Cbk_CheckWakeup( uint8 controller ){}
 
 void Can_MainFunction_Write( void ){}
 void Can_MainFunction_Read( void ){}
+void Can_MainFunction_Error( void ){}
 void Can_MainFunction_BusOff( void ){}
 void Can_MainFunction_Wakeup( void ){}
 

@@ -332,7 +332,7 @@ Std_ReturnType Mcu_InitRamSection(const Mcu_RamSectionType RamSection)
 
 Std_ReturnType Mcu_InitClock(const Mcu_ClockType ClockSetting)
 {
-	Mcu_ClockSettingConfigType *clockSettingsPtr;
+	const Mcu_ClockSettingConfigType *clockSettingsPtr;
 	VALIDATE_W_RV( ( 1 == Mcu_Global.initRun ), MCU_INITCLOCK_SERVICE_ID, MCU_E_UNINIT, E_NOT_OK );
 	VALIDATE_W_RV( ( ClockSetting < Mcu_Global.config->McuClockSettings ), MCU_INITCLOCK_SERVICE_ID, MCU_E_PARAM_CLOCK, E_NOT_OK );
 
@@ -488,6 +488,13 @@ uint32_t McuE_GetPeripheralClock(McuE_PeriperalClock_t type)
 	return 0;
 }
 
+/**
+ * Get frequency of the oscillator
+ */
+uint32_t McuE_GetClockReferencePointFrequency()
+{
+	return Mcu_Global.config->McuClockSettingConfig[Mcu_Global.clockSetting].McuClockReferencePointFrequency;
+}
 
 /**
  * Function to setup the internal flash for optimal performance

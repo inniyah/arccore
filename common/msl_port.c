@@ -10,7 +10,10 @@ Methods called by MW MSL libraries to perform console IO:
 */
 
 #include "Os.h"
-#include "stddef.h"
+#include "Ramlog.h"
+#include "../../MSL_Common_Embedded/Include/UART.h"
+#include <stddef.h>
+#include <stdlib.h>
 
 #ifdef USE_TTY_WINIDEA
 
@@ -32,38 +35,42 @@ volatile unsigned char g_TRBuffer[TRBUFF_LEN] __attribute__ ((aligned (0x100)));
 
 #endif
 
-int  InitializeUART(void)
+UARTError InitializeUART(UARTBaudRate baudRate)
 {
+	(void)baudRate;
 	return 0;
 }
 
-int ReadUARTN( char* buf, int cnt )
+UARTError ReadUARTN(void* bytes, unsigned long length)
 {
 #ifdef USE_TTY_WINIDEA
 	(void)g_TRBuffer[0];
 #endif
-	(void)buf;
-	(void)cnt;
+	(void)bytes;
+	(void)length;
 	return 0; // No error
 }
 
-int ReadUART1(char* c) {
+UARTError ReadUART1(char* c) {
 	return ReadUARTN( c, 1 );
 }
 
-int WriteUARTN( char* buf, int cnt )
+UARTError WriteUARTN(const void* buf, unsigned long cnt)
 {
 #ifdef USE_TTY_WINIDEA
-	if (g_TConn)
 	{
-		unsigned char nCnt,nLen;
-		for(nCnt = 0; nCnt < cnt; nCnt++)
+		char *pbuf = buf;
+		if (g_TConn)
 		{
-			while( TWBUFF_FULL() ) {}
-			nLen = TWBUFF_TPTR;
-			g_TWBuffer[nLen] = buf[nCnt];
-			nLen = TWBUFF_INC(nLen);
-			TWBUFF_TPTR = nLen;
+			unsigned char nCnt,nLen;
+			for(nCnt = 0; nCnt < cnt; nCnt++)
+			{
+				while( TWBUFF_FULL() ) {}
+				nLen = TWBUFF_TPTR;
+				g_TWBuffer[nLen] = pbuf[nCnt];
+				nLen = TWBUFF_INC(nLen);
+				TWBUFF_TPTR = nLen;
+			}
 		}
 	}
 #endif
@@ -82,7 +89,7 @@ int WriteUARTN( char* buf, int cnt )
 	return 0; // No error
 }
 
-int WriteUART1(char c) {
+UARTError WriteUART1(char c) {
 	return WriteUARTN( &c, 1 );
 }
 
