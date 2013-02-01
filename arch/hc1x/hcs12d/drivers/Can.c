@@ -27,7 +27,9 @@
 #include "Cpu.h"
 #include "Mcu.h"
 #include "CanIf_Cbk.h"
+#if defined(USE_DET)
 #include "Det.h"
+#endif
 #if defined(USE_DEM)
 #include "Dem.h"
 #endif
@@ -37,6 +39,8 @@
 #include "Os.h"
 #include "isr.h"
 #include "arc.h"
+
+#define USE_CAN_STATISTICS      STD_OFF
 
 // bits in CANxCTL0:
 #define BM_INITRQ	0x01
@@ -263,10 +267,12 @@ Can_GlobalType Can_Global =
 /* Type for holding information about each controller */
 typedef struct {
   CanIf_ControllerModeType state;
-  uint32		lock_cnt;
+  uint8		lock_cnt;
 
   // Statistics
-  Can_Arc_StatisticsType stats;
+#if (USE_CAN_STATISTICS == STD_ON)
+    Can_Arc_StatisticsType stats;
+#endif
 
   // Data stored for Txconfirmation callbacks to CanIf
   PduIdType swPduHandle; //
@@ -452,7 +458,9 @@ static void Can_ErrIsr( int unit ) {
     if( ((rflg & (BM_RSTAT0 | BM_RSTAT0)) == (BM_RSTAT0 | BM_RSTAT1)) ||
         ((rflg & (BM_TSTAT0 | BM_TSTAT0)) == (BM_TSTAT0 | BM_TSTAT1)) )
     {
-      canUnit->stats.boffCnt++;
+#if (USE_CAN_STATISTICS == STD_ON)
+        canUnit->stats.boffCnt++;
+#endif
       if (GET_CALLBACKS()->ControllerBusOff != NULL)
       {
         GET_CALLBACKS()->ControllerBusOff(unit);
@@ -486,7 +494,9 @@ static void Can_RxIsr(int unit) {
 
   CAN_HW_t *canHw= GetController(unit);
   const Can_ControllerConfigType *canHwConfig= GET_CONTROLLER_CONFIG(Can_Global.channelMap[unit]);
+#if (USE_CAN_STATISTICS == STD_ON)
   Can_UnitType *canUnit = GET_PRIVATE_DATA(unit);
+#endif
   const Can_HardwareObjectType *hohObj;
 
   // Loop over all the Hoh's
@@ -517,8 +527,10 @@ static void Can_RxIsr(int unit) {
                                         canHw->RXFG.dlr & 0x0f,
                                         (uint8 *)&canHw->RXFG.ds0 ); // Next layer will copy
         }
+#if (USE_CAN_STATISTICS == STD_ON)
         // Increment statistics
         canUnit->stats.rxSuccessCnt++;
+#endif
 
         // Clear interrupt
         canHw->RFLG = BM_RXF;					// clear RX flag
@@ -594,7 +606,9 @@ void Can_Init( const Can_ConfigType *config ) {
     canUnit->lock_cnt = 0;
 
     // Clear stats
+#if (USE_CAN_STATISTICS == STD_ON)
     memset(&canUnit->stats, 0, sizeof(Can_Arc_StatisticsType));
+#endif
 
     // Note!
     // Could install handlers depending on HW objects to trap more errors
@@ -654,7 +668,9 @@ void Can_DeInit()
     canUnit->lock_cnt = 0;
 
     // Clear stats
+#if (USE_CAN_STATISTICS == STD_ON)
     memset(&canUnit->stats, 0, sizeof(Can_Arc_StatisticsType));
+#endif
   }
 
   Can_Global.config = NULL;
@@ -952,13 +968,16 @@ Can_ReturnType Can_Write( Can_Arc_HTHType hth, Can_PduType *pduInfo ) {
 
     canHwConfig = GET_CONTROLLER_CONFIG(Can_Global.channelMap[controller]);
 
-    if( canHwConfig->CanTxProcessing == CAN_ARC_PROCESS_TYPE_INTERRUPT ) {
+    if( (canHwConfig->CanTxProcessing == CAN_ARC_PROCESS_TYPE_INTERRUPT) &&
+        (canUnit->lock_cnt == 0) ) {
   	  /* Turn on the tx interrupt mailboxes */
-      canHw->TIER |= BM_TX0; // We only use TX0
+      canHw->TIER = BM_TX0; // We only use TX0
     }
 
     // Increment statistics
+#if (USE_CAN_STATISTICS == STD_ON)
     canUnit->stats.txSuccessCnt++;
+#endif
 
     // Store pdu handle in unit to be used by TxConfirmation
     canUnit->swPduHandle = pduInfo->swPduHandle;
@@ -1004,11 +1023,13 @@ void Can_MainFunction_Error( void ) {
  * @param stats Pointer to data to copy statistics to
  */
 
+#if (USE_CAN_STATISTICS == STD_ON)
 void Can_Arc_GetStatistics( uint8 controller, Can_Arc_StatisticsType *stats)
 {
   Can_UnitType *canUnit = GET_PRIVATE_DATA(controller);
   *stats = canUnit->stats;
 }
+#endif
 
 #else // Stub all functions for use in simulator environment
 
