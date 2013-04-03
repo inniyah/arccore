@@ -203,7 +203,7 @@ EventRecType 		        priMemEventBuffer[DEM_MAX_NUMBER_EVENT_PRI_MEM];
 static FreezeFrameRecType	priMemFreezeFrameBuffer[DEM_MAX_NUMBER_FF_DATA_PRI_MEM];
 //FreezeFrameRecType        FreezeFrameMirrorBuffer[DEM_MAX_NUMBER_FF_DATA_PRI_MEM];
 extern FreezeFrameRecType*  FreezeFrameMirrorBuffer[];
-static ExtDataRecType		priMemExtDataBuffer[DEM_MAX_NUMBER_EXT_DATA_PRI_MEM];
+ExtDataRecType		priMemExtDataBuffer[DEM_MAX_NUMBER_EXT_DATA_PRI_MEM];
 HealingRecType         		priMemAgingBuffer[DEM_MAX_NUMBER_AGING_PRI_MEM];
 extern HealingRecType   		HealingMirrorBuffer[DEM_MAX_NUMBER_AGING_PRI_MEM];
 
@@ -590,6 +590,8 @@ static void updateEventStatusRec(const Dem_EventParameterType *eventParam, Dem_E
 			/** @req DEM036 */ /** @req DEM379.PendingSet */
 			eventStatusRecPtr->eventStatusExtended |= (DEM_TEST_FAILED | DEM_TEST_FAILED_THIS_OPERATION_CYCLE | DEM_TEST_FAILED_SINCE_LAST_CLEAR | DEM_PENDING_DTC | DEM_CONFIRMED_DTC);
 			eventStatusRecPtr->eventStatusExtended &= (Dem_EventStatusExtendedType)~(DEM_TEST_NOT_COMPLETED_SINCE_LAST_CLEAR | DEM_TEST_NOT_COMPLETED_THIS_OPERATION_CYCLE);
+			if ((eventParam->DTCClassRef != NULL) && (eventParam->DTCClassRef->DTCKind == DEM_DTC_KIND_EMISSION_REL_DTCS))
+					eventStatusRecPtr->eventStatusExtended |= DEM_WARNING_INDICATOR_REQUESTED;
 		}
 
 		if (eventStatus == DEM_EVENT_STATUS_PASSED) {
@@ -599,6 +601,8 @@ static void updateEventStatusRec(const Dem_EventParameterType *eventParam, Dem_E
 			/** @req DEM036 */
 			eventStatusRecPtr->eventStatusExtended &= (Dem_EventStatusExtendedType)~DEM_TEST_FAILED;
 			eventStatusRecPtr->eventStatusExtended &= (Dem_EventStatusExtendedType)~(DEM_TEST_NOT_COMPLETED_SINCE_LAST_CLEAR | DEM_TEST_NOT_COMPLETED_THIS_OPERATION_CYCLE);
+			if ((eventParam->DTCClassRef != NULL) && (eventParam->DTCClassRef->DTCKind == DEM_DTC_KIND_EMISSION_REL_DTCS))
+				eventStatusRecPtr->eventStatusExtended &= (Dem_EventStatusExtendedType)~DEM_WARNING_INDICATOR_REQUESTED;
 		}
 
 		if ((eventStatus == DEM_EVENT_STATUS_PREFAILED)\
@@ -645,7 +649,8 @@ static void mergeEventStatusRec(const EventRecType *eventRec)
 		eventStatusRecPtr->eventStatusExtended |= (Dem_EventStatusExtendedType)(eventRec->eventStatusExtended & eventStatusRecPtr->eventStatusExtended & DEM_TEST_NOT_COMPLETED_SINCE_LAST_CLEAR);
 		// DEM_PENDING_DTC and DEM_CONFIRMED_DTC should be set if set in either
 		eventStatusRecPtr->eventStatusExtended |= (Dem_EventStatusExtendedType)(eventRec->eventStatusExtended & (DEM_PENDING_DTC | DEM_CONFIRMED_DTC));
-
+		// DEM_WARNING_INDICATOR_REQUESTED should be set if set in either
+		eventStatusRecPtr->eventStatusExtended |= (Dem_EventStatusExtendedType)(eventRec->eventStatusExtended & DEM_WARNING_INDICATOR_REQUESTED);
 	}
 
     Irq_Restore(state);
@@ -2796,7 +2801,7 @@ Std_ReturnType Dem_GetDTCStatusAvailabilityMask(uint8 *dtcStatusMask) /** @req D
 						| DEM_TEST_NOT_COMPLETED_SINCE_LAST_CLEAR
 						| DEM_TEST_FAILED_SINCE_LAST_CLEAR
 						| DEM_TEST_NOT_COMPLETED_THIS_OPERATION_CYCLE
-//						| DEM_WARNING_INDICATOR_REQUESTED	TODO: Add support for this bit
+						| DEM_WARNING_INDICATOR_REQUESTED
 						;
 
 	return E_OK;
@@ -2998,6 +3003,8 @@ Dem_ReturnClearDTCType Dem_ClearDTC(uint32 dtc, Dem_DTCKindType dtcKind, Dem_DTC
 									{
 									case DEM_DTC_ORIGIN_PRIMARY_MEMORY:
 										/** @req DEM077 */
+										if ((eventParam->CallbackInitMforE != NULL) && (eventParam->CallbackInitMforE->CallbackInitMForEFnc != NULL))
+											eventParam->CallbackInitMforE->CallbackInitMForEFnc(DEM_INIT_MONITOR_CLEAR);
 										deleteEventPriMem(eventParam);
 										deleteFreezeFrameDataPriMem(eventParam);
 										deleteExtendedDataPriMem(eventParam);
@@ -3075,10 +3082,29 @@ Dem_ReturnControlDTCStorageType Dem_DisableDTCStorage(Dem_DTCGroupType dtcGroup,
 Dem_ReturnControlDTCStorageType Dem_EnableDTCStorage(Dem_DTCGroupType dtcGroup, Dem_DTCKindType dtcKind)
 {
 	Dem_ReturnControlDTCStorageType returnCode = DEM_CONTROL_DTC_STORAGE_OK;
+	const Dem_EventParameterType *eventParam;
+	uint16 i;
 
 	if (demState == DEM_INITIALIZED) {
 		// TODO: Behavior is not defined if group or kind do not match active settings, therefore the filter is just switched off.
 		(void)dtcGroup; (void)dtcKind;	// Just to make get rid of PC-Lint warnings
+
+		for (i = 0; i < DEM_MAX_NUMBER_EVENT; i++) {
+			if (eventStatusBuffer[i].eventId != DEM_EVENT_ID_NULL) {
+				eventParam = eventStatusBuffer[i].eventParamRef;
+				if (eventParam != NULL) {
+					if ((DEM_CLEAR_ALL_EVENTS == STD_ON) || (eventParam->DTCClassRef != NULL)) {
+						if (checkDtcKind(disableDtcStorage.dtcKind, eventParam)) {
+							if (checkDtcGroup(disableDtcStorage.dtcGroup, eventParam)) {
+								if ((eventParam->CallbackInitMforE != NULL) && (eventParam->CallbackInitMforE->CallbackInitMForEFnc != NULL))
+									eventParam->CallbackInitMforE->CallbackInitMForEFnc(DEM_INIT_MONITOR_RESTART);
+							}
+						}
+					}
+				}
+			}
+		}
+
 		disableDtcStorage.storageDisabled = FALSE; /** @req DEM080 */
 	} else {
 		DET_REPORTERROR(MODULE_ID_DEM, 0, DEM_ENABLEDTCSTORAGE_ID, DEM_E_UNINIT);

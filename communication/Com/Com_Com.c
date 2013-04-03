@@ -90,8 +90,7 @@ uint8 Com_ReceiveSignal(Com_SignalIdType SignalId, void* SignalDataPtr) {
 			SignalId,
 			FALSE,
 			SignalDataPtr,
-			pduDataPtr,
-			IPdu->ComIPduSize);
+			pduDataPtr);
 
 	return r;
 }
@@ -193,6 +192,9 @@ Std_ReturnType Com_TriggerTransmit(PduIdType ComTxPduId, PduInfoType *PduInfoPtr
 Std_ReturnType Com_Internal_TriggerIPduSend(PduIdType ComTxPduId) {
 	PDU_ID_CHECK(ComTxPduId, 0x17, E_NOT_OK);
 
+#if PDUR_COM_SUPPORT == STD_OFF
+	return E_NOT_OK;
+#else
 	const ComIPdu_type *IPdu = GET_IPdu(ComTxPduId);
 	Com_Arc_IPdu_type *Arc_IPdu = GET_ArcIPdu(ComTxPduId);
     imask_t state;
@@ -244,7 +246,7 @@ Std_ReturnType Com_Internal_TriggerIPduSend(PduIdType ComTxPduId) {
 	}
     Irq_Restore(state);
     return E_OK;
-
+#endif
 }
 //lint -esym(904, Com_TriggerIPduSend) //PC-Lint Exception of rule 14.7
 void Com_TriggerIPduSend(PduIdType ComTxPduId) {
@@ -253,7 +255,7 @@ void Com_TriggerIPduSend(PduIdType ComTxPduId) {
 
 //lint -esym(904, Com_RxIndication) //PC-Lint Exception of rule 14.7
 void Com_RxIndication(PduIdType ComRxPduId, const PduInfoType* PduInfoPtr) {
-	PDU_ID_CHECK(ComRxPduId, 0x14, E_NOT_OK);
+	PDU_ID_CHECK_NO_RETURN(ComRxPduId, 0x14);
 
 	const ComIPdu_type *IPdu = GET_IPdu(ComRxPduId);
 	Com_Arc_IPdu_type *Arc_IPdu = GET_ArcIPdu(ComRxPduId);
@@ -287,7 +289,7 @@ void Com_RxIndication(PduIdType ComRxPduId, const PduInfoType* PduInfoPtr) {
 }
 
 void Com_TpRxIndication(PduIdType PduId, NotifResultType Result) {
-	PDU_ID_CHECK(PduId, 0x14, E_NOT_OK);
+	PDU_ID_CHECK_NO_RETURN(PduId, 0x14);
 
 	const ComIPdu_type *IPdu = GET_IPdu(PduId);
 	Com_Arc_IPdu_type *Arc_IPdu = GET_ArcIPdu(PduId);
@@ -317,7 +319,7 @@ void Com_TpRxIndication(PduIdType PduId, NotifResultType Result) {
 }
 
 void Com_TpTxConfirmation(PduIdType PduId, NotifResultType Result) {
-	PDU_ID_CHECK(PduId, 0x15, E_NOT_OK);
+	PDU_ID_CHECK_NO_RETURN(PduId, 0x15);
 	(void)Result; // touch
 
 	imask_t state;
@@ -326,7 +328,7 @@ void Com_TpTxConfirmation(PduIdType PduId, NotifResultType Result) {
 	Irq_Restore(state);
 }
 void Com_TxConfirmation(PduIdType ComTxPduId) {
-	PDU_ID_CHECK(ComTxPduId, 0x15, E_NOT_OK);
+	PDU_ID_CHECK_NO_RETURN(ComTxPduId, 0x15);
 
 	(void)ComTxPduId; // Nothing to be done. This is just to avoid Lint warning.
 }
@@ -343,15 +345,11 @@ Std_ReturnType Com_SendSignalGroup(Com_SignalGroupIdType SignalGroupId) {
 	}
 
 	// Copy shadow buffer to Ipdu data space
-	const ComGroupSignal_type *groupSignal;
 	imask_t irq_state;
 
 	Irq_Save(irq_state);
-	for (uint8 i = 0; Signal->ComGroupSignal[i] != NULL; i++) {
-		groupSignal = Signal->ComGroupSignal[i];
 
-		Com_WriteGroupSignalDataToPdu(Signal->ComHandleId, groupSignal->ComHandleId, Signal->Com_Arc_ShadowBuffer);
-	}
+	Com_CopySignalGroupDataFromShadowBufferToPdu(SignalGroupId);
 
 	// If the signal has an update bit. Set it!
 	if (Signal->ComSignalArcUseUpdateBit) {
@@ -376,7 +374,7 @@ Std_ReturnType Com_ReceiveSignalGroup(Com_SignalGroupIdType SignalGroupId) {
 		return COM_BUSY;
 	}
 	// Copy Ipdu data buffer to shadow buffer.
-	Com_CopySignalGroupDataFromShadowBuffer(SignalGroupId);
+	Com_CopySignalGroupDataFromPduToShadowBuffer(SignalGroupId);
 
 	return E_OK;
 }
@@ -384,14 +382,13 @@ Std_ReturnType Com_ReceiveSignalGroup(Com_SignalGroupIdType SignalGroupId) {
 void Com_UpdateShadowSignal(Com_SignalIdType SignalId, const void *SignalDataPtr) {
 	Com_Arc_GroupSignal_type *Arc_GroupSignal = GET_ArcGroupSignal(SignalId);
 
-	Com_WriteSignalDataToPduBuffer(SignalId, TRUE, SignalDataPtr, (void *)Arc_GroupSignal->Com_Arc_ShadowBuffer, 8);
+	Com_WriteSignalDataToPduBuffer(SignalId, TRUE, SignalDataPtr, (void *)Arc_GroupSignal->Com_Arc_ShadowBuffer);
 }
 
 void Com_ReceiveShadowSignal(Com_SignalIdType SignalId, void *SignalDataPtr) {
 	Com_Arc_GroupSignal_type *Arc_GroupSignal = GET_ArcGroupSignal(SignalId);
-	uint8 pduSize = GET_IPdu(GET_Signal(SignalId)->ComIPduHandleId)->ComIPduSize;
 
-	Com_ReadSignalDataFromPduBuffer(SignalId, TRUE, SignalDataPtr, (void *)Arc_GroupSignal->Com_Arc_ShadowBuffer,pduSize);
+	Com_ReadSignalDataFromPduBuffer(SignalId, TRUE, SignalDataPtr, (void *)Arc_GroupSignal->Com_Arc_ShadowBuffer);
 }
 
 

@@ -24,6 +24,7 @@
 #include <stddef.h>
 #include "Std_Types.h"
 #include "Ramlog.h"
+#include "Os.h"
 
 #if defined(CFG_ARM_CM3)
 #include "irq_types.h"
@@ -32,6 +33,10 @@
 
 #ifdef USE_TTY_TCF_STREAMS
 #include "streams.h"
+#endif
+
+#if defined(USE_TTY_UDE)
+#include "serial_dbg_ude.h"
 #endif
 
 
@@ -440,6 +445,11 @@ int write(  int fd, const void *_buf, size_t nbytes)
 	}
 #endif
 
+#ifdef USE_TTY_UDE
+	UDE_write(fd,(char *)_buf,nbytes);
+#endif
+
+
 #if defined(USE_RAMLOG)
 		{
 			char *buf = (char *)_buf;
@@ -577,6 +587,9 @@ void _exit( int status ) {
 	__asm("        .global C$$EXIT");
 	__asm("C$$EXIT: nop");
 #endif
+
+	ShutdownOS( E_OS_EXIT_ABORT );
+
 	while(1) ;
 }
 #endif

@@ -29,6 +29,8 @@ cflags-y 		+= -gdwarf-2
 cflags-y 		+= -gccinc
 cflags-y 		+= -cwd explicit
 cflags-y 		+= -msgstyle gcc
+cflags-y 		+= -maxerrors 10
+cflags-y 		+= -maxwarnings 10
 cflags-$(CFG_OPT_RELEASE)        += -opt level=2
 cflags-$(CFG_OPT_DEBUG)        += -opt off 
 
@@ -49,7 +51,7 @@ cflags-y          += -abi=eabi
 cflags-y          += -proc=5565
 cflags-y          += -fp=soft
 #cflags-y          += -use_isel=on
-cflags-y          += -sdata=8 -sdata2=8
+cflags-y          += -sdata=0 -sdata2=0
 
 # Get machine cflags
 #cflags-y		+= $(cflags-$(CFG_ARCH))
@@ -63,6 +65,7 @@ CFLAGS_cw_EcuM.o +=  -W=nounused -W=off
 CFLAGS_cw_Mcu.o += -W=nounused 
 CFLAGS_cw_Can.o +=  -W=nounused
 CFLAGS_cw_CanIf.o +=  -W=off
+CFLAGS_cw_init.o +=  -W=off
 CFLAGS_cw_Nm.o +=  -W=nounused -W=off
 CFLAGS_cw_Mcu_Cfg.o += -W=off
 CFLAGS_cw_ComM.o +=  -W=nounused
@@ -165,6 +168,8 @@ AS	= 	$(CW_BIN)/mwasmeppc.exe
 
 asflags-y += -gnu_mode
 asflags-y += -proc e500 -gdwarf-2
+asflags-y += -maxerrors 10
+asflags-y += -maxwarnings 10
 asflags-$(CFG_VLE) += -vle
 ASFLAGS += $(asflags-y)
 ASOUT = -o $@

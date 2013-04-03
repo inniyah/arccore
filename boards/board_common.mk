@@ -63,8 +63,27 @@ inc-$(USE_DMA) += $(ROOTDIR)/$(ARCH_PATH-y)/drivers
 # Mcu
 obj-$(USE_MCU) += Mcu.o
 obj-$(USE_MCU) += Mcu_Cfg.o
-obj-$(USE_MCU)-$(if $(CFG_MPC5668)$(CFG_MPC5516),y) += Mcu_Sleep.o
-#obj-$(CFG_MPC55XX)-$(USE_MCU) += Mcu_Exceptions.o
+ifeq ($(CFG_PPC),y)
+ifeq ($(filter Mcu_Arc_mpc55xx.o Mcu_Arc_mpc56xx.o,$(obj-y)),)
+obj-$(USE_MCU)-$(if $(CFG_MPC5516)$(CFG_MPC5668)$(CFG_MPC5567),y) += Mcu_Arc_mpc55xx.o
+obj-$(USE_MCU)-$(if $(CFG_MPC5516)$(CFG_MPC5668)$(CFG_MPC5567),n,y) += Mcu_Arc_mpc56xx.o
+endif
+endif
+
+# CPU specific
+obj-$(CFG_PPC) += mpc5xxx_handlers.o
+obj-$(CFG_PPC) += mpc5xxx_handlers_asm.o
+ifeq ($(filter mpc5xxx_callout_stubs,$(obj-y)),)
+obj-$(CFG_PPC) += mpc5xxx_callout_stubs.o
+endif
+
+vpath-$(CFG_PPC) += $(ROOTDIR)/$(ARCH_PATH-y)/integration
+obj-$(CFG_MCU_ARC_CONFIG) += Mcu_Arc_Cfg.o
+obj-$(CFG_PPC) += Cpu.o
+
+obj-$(CFG_PPC) += mm.o
+vpath-$(CFG_PPC) += $(ROOTDIR)/$(ARCH_PATH-y)/mm
+inc-$(CFG_PPC) += $(ROOTDIR)/$(ARCH_PATH-y)/mm
 
 # Flash
 obj-$(USE_FLS) += Fls.o
@@ -343,11 +362,13 @@ else ifeq ($(SELECT_CLIB),CLIB_CW)
   obj-y += xtoa.o
   obj-y += msl_port.o
   def-y += USE_CLIB_CW
+  obj-$(USE_TTY_UDE) += serial_dbg_ude.o
 else
   # Newlib
   def-y += USE_NEWLIB
   obj-y += xtoa.o
   obj-y += newlib_port.o
+  obj-$(USE_TTY_UDE) += serial_dbg_ude.o
   # If we have configured console output we include printf. 
   # Overridden to use lib implementation with CFG_NEWLIB_PRINTF
   ifneq ($(CFG_NEWLIB_PRINTF),y)
@@ -380,9 +401,6 @@ inc-y += $(ROOTDIR)/system/kernel/include
 inc-y += $(ROOTDIR)/$(ARCH_PATH-y)/kernel
 inc-y += $(ROOTDIR)/$(ARCH_PATH-y)/drivers
 inc-y += $(ROOTDIR)/boards/$(BOARDDIR)/config
-inc-y += $(ROOTDIR)/drivers/Dem
-inc-y += $(ROOTDIR)/drivers/Dcm
-inc-y += $(ROOTDIR)/drivers/test
 
 
 #

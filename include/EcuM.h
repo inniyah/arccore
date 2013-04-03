@@ -81,6 +81,14 @@
 #define ECUM_AR_PATCH_VERSION	2
 
 
+#define VALIDATE_STATE(_state) \
+	do { \
+		EcuM_StateType ecuMState;  \
+		EcuM_GetState(&ecuMState); \
+		assert(ecuMState == (_state) ); \
+	} while(0)
+
+
 #include "EcuM_Cfg.h"
 #include "EcuM_Types.h"
 #include "EcuM_Cbk.h"
@@ -143,6 +151,10 @@
 #define ECUM_AR_MINOR_VERSION	2
 #define ECUM_AR_PATCH_VERSION	2
 
+
+#define ECUM_AR_VERSION 	(ECUM_AR_MAJOR_VERSION*10000)+\
+							(ECUM_AR_MINOR_VERSION*100)+ECUM_AR_PATCH_VERSION
+
 //#include "EcuM_Cfg.h"
 
 #if ( ECUM_VERSION_INFO_API == STD_ON)
@@ -163,7 +175,7 @@ Std_ReturnType EcuM_ReleasePOST_RUN(EcuM_UserType user);
 
 void EcuM_KillAllRUNRequests(void);
 
-#if defined(USE_COMM)
+#if defined(USE_COMM) &&  (ECUM_AR_VERSION < 40300)
 Std_ReturnType EcuM_ComM_RequestRUN(NetworkHandleType channel);
 Std_ReturnType EcuM_ComM_ReleaseRUN(NetworkHandleType channel);
 boolean EcuM_ComM_HasRequestedRUN(NetworkHandleType channel);
