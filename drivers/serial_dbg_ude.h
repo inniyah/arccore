@@ -17,7 +17,7 @@
 #define SERIAL_DBG_UDE_H_
 
 
-size_t UDE_write(int fd, char *buffer, size_t nbytes);
+extern DeviceSerialType UDE_Device;
 
 
 #endif /* SERIAL_DBG_UDE_H_ */

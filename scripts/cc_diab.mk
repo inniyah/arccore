@@ -34,8 +34,9 @@ DIAB_BIN = $(DIAB_COMPILE)/bin
 
 CC	= 	$(DIAB_BIN)/dcc	
 
-cflags-$(CFG_OPT_RELEASE)        += -g3
-cflags-$(CFG_OPT_DEBUG)        += -g2
+cflags-$(CFG_OPT_RELEASE) += -g3
+cflags-$(CFG_OPT_DEBUG)   += -g2
+cflags-$(CFG_OPT_FLAGS)   += $(SELECT_OPT)
 
 
 ifeq ($(DIAB_TARGET),)
@@ -75,7 +76,6 @@ CFLAGS_diab_init.o += -ei4236
 CFLAGS_diab_task.o += -ei4546 -ei4550
 CFLAGS_diab_counter.o += -ei1573
 CFLAGS_diab_application.o += -ei4186
-CFLAGS_diab_newlib_port.o += -ei4301  # Buggy diab libs
 CFLAGS_diab_IoHwAb_Pwm.o += -ei4186 -ei4111
 CFLAGS_diab_Spi_Lcfg.o += -ei4068
 CFLAGS_diab_NvM.o += -ei4111 -ei4177
@@ -95,6 +95,9 @@ CFLAGS_diab_Port.o += -ei4550
 CFLAGS = $(cflags-y) $(cflags-yy) $(CFLAGS_diab_$@)
 
 CCOUT 		= -o $@ 
+
+SELECT_CLIB=CLIB_DIAB
+CFG_ARC_CLIB?=y
 
 # ---------------------------------------------------------------------------
 # Preprocessor

@@ -169,7 +169,7 @@ SECTIONS
     irq.o(.text)
     Det.o(.text)
     xtoa.o(.text)
-    newlib_port.o(.text)
+    clib_port.o(.text)
 
     . = ALIGN(2);
   } > bank_B AT>bank_B_lma =0xff
@@ -252,6 +252,10 @@ SECTIONS
     Adc*.o(.text)
     Dem*.o(.text)
     IoHwAb*.o(.text)
+    ramlog.o(.text)
+    application.o(.text)
+    EcuM_Main.o(.text)
+    
         . = ALIGN(2);
   } > bank_F AT>bank_F_lma  =0xff
   

@@ -23,15 +23,17 @@
 #ifndef DEM_H_
 #define DEM_H_
 
+#include "Modules.h"
+
 #define DEM_MODULE_ID			MODULE_ID_DEM
-#define DEM_VENDOR_ID			1
+#define DEM_VENDOR_ID			VENDOR_ID_ARCCORE
 
 #define DEM_SW_MAJOR_VERSION    1
 #define DEM_SW_MINOR_VERSION   	0
 #define DEM_SW_PATCH_VERSION    0
 #define DEM_AR_MAJOR_VERSION    3
-#define DEM_AR_MINOR_VERSION    0
-#define DEM_AR_PATCH_VERSION    1
+#define DEM_AR_MINOR_VERSION    1
+#define DEM_AR_PATCH_VERSION    5
 
 /** @req DCM067.Cfg-files */
 #include "Dem_Types.h"
@@ -95,8 +97,13 @@
 #define DEM_GETFREEZEFRAMEDATARECORDBYDTC_ID		0x26
 #define DEM_GETFREEZEFRAMEDATAIDENTIFIERBYDTC_ID		0x27
 
+#define DEM_GETDTCOFOBDFREEZEFRAME_ID			0x28
+#define DEM_GETOBDFREEZEFRAMEDATA_ID			0x29
+
+#define DEM_GETNEXTFILTEREDRECORD_ID			0x3a
 #define DEM_GETTRANSLATIONTYPE_ID				0x3c
 #define DEM_GETFAULTDETECTIONCOUNTER_ID 		0x3E
+#define DEM_SETDTCFILTERFORRECORDS_ID 			0x3f
 #define DEM_MAINFUNCTION_ID						0x55
 
 #define DEM_UPDATE_EVENT_STATUS_ID				0x80
@@ -180,10 +187,14 @@ Dem_GetFreezeFameDataIdentifierByDTCType Dem_GetFreezeFrameDataIdentifierByDTC(u
 																						uint8*  arraySize,
 																						const  uint16** dataId );
 Dem_ReturnGetSizeOfFreezeFrameType Dem_GetSizeOfFreezeFrame(uint32  dtc,Dem_DTCKindType  dtcKind,Dem_DTCOriginType  dtcOrigin,uint8  recordNumber,uint16*  sizeOfFreezeFrame);
-
+Dem_ReturnSetDTCFilterType Dem_SetDTCFilterForRecords(uint16 *NumberOfFilteredRecords); /** @req DEM209 */
+Dem_ReturnGetNextFilteredDTCType Dem_GetNextFilteredRecord(uint32 *DTC, uint8 *RecordNumber); /** @req DEM224 */
 
 /*
  * OBD-specific Interfaces (8.3.6)
  */
+Std_ReturnType Dem_GetDTCOfOBDFreezeFrame(uint8 FrameNumber, uint32* DTC );
+Std_ReturnType Dem_GetOBDFreezeFrameData(uint8 PID, uint8* DestBuffer, uint8* BufSize);
+Std_ReturnType Dem_GetFreezeFramePids(uint8* array, uint8* arraySize);
 
 #endif /*DEM_H_*/

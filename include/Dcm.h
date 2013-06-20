@@ -23,15 +23,17 @@
 #ifndef DCM_H_
 #define DCM_H_
 
+#include "Modules.h"
+
 #define DCM_MODULE_ID			MODULE_ID_DCM /** @req DCM052 */
-#define DCM_VENDOR_ID			1
+#define DCM_VENDOR_ID			VENDOR_ID_ARCCORE
 
 #define DCM_SW_MAJOR_VERSION    1
 #define DCM_SW_MINOR_VERSION   	0
 #define DCM_SW_PATCH_VERSION    0
 #define DCM_AR_MAJOR_VERSION    3
-#define DCM_AR_MINOR_VERSION    0
-#define DCM_AR_PATCH_VERSION    1
+#define DCM_AR_MINOR_VERSION    1
+#define DCM_AR_PATCH_VERSION    5
 
 #include "Dcm_Types.h"
 #include "Dcm_Cfg.h"
@@ -106,5 +108,7 @@ Dcm_ReturnReadMemoryType Dcm_ReadMemory(Dcm_OpStatusType OpStatus, uint8 MemoryI
 void Dcm_DiagnosticSessionControl(Dcm_SesCtrlType session);
 Std_ReturnType DcmE_EcuReset(Dcm_EcuResetType resetType);
 void DcmE_EcuPerformReset(Dcm_EcuResetType resetType);
+
+void Dcm_E_CommunicationControl(uint8 subFunction, uint8 communicationType, Dcm_NegativeResponseCodeType *responseCode );
 
 #endif /*DCM_H_*/

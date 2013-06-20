@@ -100,6 +100,10 @@
 #include "WdgM.h"
 #endif
 
+#if defined(CFG_SHELL)
+#include "shell.h"
+#endif
+
 /* ----------------------------[private define]------------------------------*/
 
 /* Does not run functions that are not drivers */
@@ -241,6 +245,11 @@ void EcuM_AL_DriverInitOne(const EcuM_ConfigType *ConfigPtr)
 	// Setup PWM
 	Pwm_Init(ConfigPtr->PwmConfig);
 #endif
+
+#if defined(CFG_SHELL)
+	SHELL_Init();
+#endif
+
 }
 
 
@@ -603,13 +612,13 @@ void EcuM_GenerateRamHash(void)
 	 */
 	VALIDATE_STATE( ECUM_STATE_SLEEP );
 	 
-#if defined(USE_GPT)
+#if defined(USE_GPT) && (GPT_DEINIT_API == STD_ON)
 	Gpt_DeInit();
 #endif
-#if defined(USE_ADC)
+#if defined(USE_ADC) && (ADC_DEINIT_API == STD_ON)
 	Adc_DeInit();
 #endif
-#if defined(USE_PWM)
+#if defined(USE_PWM) && (PWM_DE_INIT_API == STD_ON)
 	Pwm_DeInit();
 #endif
 #if defined(USE_SPI)

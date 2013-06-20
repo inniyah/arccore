@@ -17,6 +17,7 @@
 #define RAMLOG_H_
 
 #include <stdint.h>
+#include "device_serial.h"
 #include "xtoa.h"
 
 #if !defined(USE_RAMLOG)
@@ -59,6 +60,10 @@ int ramlog_printf(const char *format, ...);
 #else
 #define ramlog_printf(format,...)
 #endif
+
+void ramlog_init( void );
+
+extern DeviceSerialType Ramlog_Device;
 
 #endif /* RAMLOG_H_ */
 
