@@ -26,11 +26,14 @@
 #include <string.h>
 #include "Dcm.h"
 #include "Dcm_Internal.h"
-#if defined(DCM_USE_SERVICE_CLEARDIAGNOSTICINFORMATION) || defined(DCM_USE_SERVICE_READDTCINFORMATION) || defined(DCM_USE_SERVICE_CONTROLDTCSETTING)
+#if defined (DCM_USE_SERVICE_CLEARDIAGNOSTICINFORMATION)|| defined(DCM_USE_SERVICE_READDTCINFORMATION)	|| defined(DCM_USE_SERVICE_CONTROLDTCSETTING) \
+		|| defined (DCM_USE_SERVICE_REQUESTPOWERTRAINFREEZEFRAMEDATA) || defined(DCM_USE_SERVICE_CLEAREMISSIONRELATEDDIAGNOSTICDATA) \
+		|| defined(DCM_USE_SERVICE_REQUESTEMISSIONRELATEDDTCS) || defined(DCM_USE_SERVICE_REQUESTEMISSIONRELATEDDTCSDETECTEDDURINGCURRENTORLASCOMPLETEDDRIVINGCYCLE)
 #if defined(USE_DEM)
 #include "Dem.h"
 #else
-#warning Dcm: UDS services ClearDiagnosticInformation, ReadDTCInformation and/or ControlDTCSetting will not work without Dem.
+#warning Dcm: UDS services ClearDiagnosticInformation, ReadDTCInformation, ControlDTCSetting, RequestPowertrainFreezeFrameData, ClearEmissionRelatedDiagnosticData,\
+        RequestEmissionRelatedDTCs and/or RequestEmissionRelatedDTCsDetectedDuringCurrentOrLasCompletedDrivingCycle will not work without Dem.
 #endif
 #endif
 
@@ -241,13 +244,25 @@ static const Dcm_DspMemoryRangeInfo* findRange(const Dcm_DspMemoryRangeInfo *mem
 static Dcm_NegativeResponseCodeType writeMemoryData(Dcm_OpStatusType* OpStatus, uint8 memoryIdentifier, uint32 MemoryAddress, uint32 MemorySize, uint8 *SourceData);
 
 /* OBD */
+#ifdef DCM_USE_SERVICE_REQUESTVEHICLEINFORMATION
 static boolean lookupInfoType(uint8 InfoType, const Dcm_DspVehInfoType **InfoTypePtr);
 static boolean Dem_SetAvailabilityInfoTypeValue(uint8 InfoType,uint32 *DATABUF);
-static Dcm_NegativeResponseCodeType OBD_Sevice_03_07(PduInfoType *pduTxData,Dem_ReturnSetDTCFilterType setDtcFilterResult);
-
-static boolean lookupPid(uint8 pidId,const Dcm_DspPidType **PidPtr);
+#endif
+#ifdef DCM_USE_SERVICE_REQUESTCURRENTPOWERTRAINDIAGDATA
 static boolean Dcm_SetAvailabilityPidValue(uint8 Pid,uint32 *Data);
+#endif
+
+#if defined(USE_DEM)
+#if defined(DCM_USE_SERVICE_REQUESTEMISSIONRELATEDDTCS) || defined(DCM_USE_SERVICE_REQUESTEMISSIONRELATEDDTCSDETECTEDDURINGCURRENTORLASCOMPLETEDDRIVINGCYCLE)
+static Dcm_NegativeResponseCodeType OBD_Sevice_03_07(PduInfoType *pduTxData,Dem_ReturnSetDTCFilterType setDtcFilterResult);
+#endif
+#if defined(DCM_USE_SERVICE_CLEAREMISSIONRELATEDDIAGNOSTICDATA)
 static boolean Dcm_LookupService(uint8 serviceId,const Dcm_DsdServiceType **dsdService);
+#endif
+#endif
+#if defined(DCM_USE_SERVICE_REQUESTCURRENTPOWERTRAINDIAGDATA) || defined(DCM_USE_SERVICE_REQUESTPOWERTRAINFREEZEFRAMEDATA)
+static boolean lookupPid(uint8 pidId,const Dcm_DspPidType **PidPtr);
+#endif
 /* OBD */
 /*
 *   end  
@@ -946,7 +961,7 @@ static Dcm_NegativeResponseCodeType udsReadDtcInfoSub_0x04(const PduInfoType *pd
 	uint16 index = 0;
 	uint16 EventIndex =0;
 	uint16 FFIdNumber = 0;
-	Dem_ReturnGetFreezeFrameDataByDTCType GetFFbyDtcReturnCode = DEM_GET_FFDATABYDTC_OK;
+	Dem_ReturnGetFreezeFrameDataByDTCType GetFFbyDtcReturnCode = DEM_GET_FFDATABYDTC_WRONG_DTC;
 	Dem_ReturnGetStatusOfDTCType GetStatusOfDtc = DEM_STATUS_OK;
 	Dem_EventStatusExtendedType DtcStatus = 0;
 	Dem_EventParameterType *pEventParaTemp = NULL;
@@ -960,14 +975,15 @@ static Dcm_NegativeResponseCodeType udsReadDtcInfoSub_0x04(const PduInfoType *pd
 
 	for (EventIndex = 0; DEM_Config.ConfigSet->EventParameter[EventIndex].Arc_EOL != TRUE; EventIndex++){
 		// search each event linked to this DTC
-		if (DEM_Config.ConfigSet->EventParameter[EventIndex].DTCClassRef->DTC == DtcNumber){
+		if( (NULL != DEM_Config.ConfigSet->EventParameter[EventIndex].DTCClassRef) &&
+			(DEM_Config.ConfigSet->EventParameter[EventIndex].DTCClassRef->DTC == DtcNumber)){
 			pEventParaTemp = (Dem_EventParameterType *)(&DEM_Config.ConfigSet->EventParameter[EventIndex]);
 		}
 		else {
 			pEventParaTemp = NULL;
 		}
 
-		if (pEventParaTemp != NULL) {
+		if ((pEventParaTemp != NULL) && (NULL != pEventParaTemp->FreezeFrameClassRef)) {
 			DtcType = pEventParaTemp->DTCClassRef->DTCKind;
 			//DtcOrigin = pEventParaTemp->EventClass->EventDestination[?];
 			// now use DEM_DTC_ORIGIN_PRIMARY_MEMORY as default.
@@ -1630,7 +1646,7 @@ void DspUdsSecurityAccess(const PduInfoType *pduRxData, PduInfoType *pduTxData)
 							if (securityRow->GetSeed != NULL) {
 								Std_ReturnType getSeedResult;
 								getSeedResult = securityRow->GetSeed(&pduRxData->SduDataPtr[2], &pduTxData->SduDataPtr[2], &getSeedErrorCode); /** @req DCM324.RequestSeed */
-								if ((getSeedResult == E_OK) && (getSeedErrorCode == E_OK)) {
+								if ((getSeedResult == E_OK) && (getSeedErrorCode == DCM_E_POSITIVERESPONSE)) {
 									// Everything ok add sub function to tx message and send it.
 									pduTxData->SduDataPtr[1] = pduRxData->SduDataPtr[1];
 									pduTxData->SduLength = 2 + securityRow->DspSecuritySeedSize;
@@ -1641,10 +1657,15 @@ void DspUdsSecurityAccess(const PduInfoType *pduRxData, PduInfoType *pduTxData)
 								}
 								else {
 									// GetSeed returned not ok
-									responseCode = DCM_E_INCORRECTMESSAGELENGTHORINVALIDFORMAT;
+									if(getSeedErrorCode != DCM_E_POSITIVERESPONSE) {
+										responseCode = getSeedErrorCode;
+									} else {
+										responseCode = DCM_E_CONDITIONSNOTCORRECT;
+									}
 								}
 							} else {
-								responseCode = DCM_E_INCORRECTMESSAGELENGTHORINVALIDFORMAT;
+								/* GetSeed not configured */
+								responseCode = DCM_E_SUBFUNCTIONNOTSUPPORTED;
 							}
 						}
 					} else {
@@ -1660,7 +1681,7 @@ void DspUdsSecurityAccess(const PduInfoType *pduRxData, PduInfoType *pduTxData)
 			}
 			else {
 				// Requested security level not configured
-				responseCode = DCM_E_INCORRECTMESSAGELENGTHORINVALIDFORMAT;
+				responseCode = DCM_E_SUBFUNCTIONNOTSUPPORTED;/* DCM321 */
 			}
 		}
 		else {
@@ -1680,7 +1701,8 @@ void DspUdsSecurityAccess(const PduInfoType *pduRxData, PduInfoType *pduTxData)
 								pduTxData->SduLength = 2;
 							}
 							else {
-								responseCode = DCM_E_CONDITIONSNOTCORRECT;
+								/* CompareKey did not return E_OK */
+								responseCode = DCM_E_INVALIDKEY;
 							}
 						} else {
 							responseCode = DCM_E_CONDITIONSNOTCORRECT;
@@ -2596,7 +2618,7 @@ static Dcm_NegativeResponseCodeType dynamicallyDefineDataIdentifierbyDid(uint16 
 	}
 	else
 	{
-		while((SourceLength < DCM_MAX_DDDSOURCE_NUMBER) && (DDid->DDDSource[SourceLength].formatOrPosition != NULL ))
+		while((SourceLength < DCM_MAX_DDDSOURCE_NUMBER) && (DDid->DDDSource[SourceLength].formatOrPosition != 0 ))
 		{
 			SourceLength++;
 		}
@@ -2989,7 +3011,7 @@ static const Dcm_DspDidControlRecordSizesType* getControlRecordSizesForControlPa
 		return NULL;
 	}
 }
-
+#if 0
 static Dcm_NegativeResponseCodeType DspIOControlReturnControlToECU(const Dcm_DspDidType *DidPtr,const PduInfoType *pduRxData,PduInfoType *pduTxData)
 {
 	Dcm_NegativeResponseCodeType responseCode = DCM_E_POSITIVERESPONSE;
@@ -3216,7 +3238,7 @@ static Dcm_NegativeResponseCodeType DspIOControlShortTeamAdjustment(const Dcm_Ds
 	
 	return responseCode;
 }
-
+#endif
 void DspIOControlByDataIdentifier(const PduInfoType *pduRxData,PduInfoType *pduTxData)
 {
 	uint16 didNr;
@@ -3369,6 +3391,7 @@ void DspCommunicationControl(const PduInfoType *pduRxData,PduInfoType *pduTxData
 }
 #endif
 
+#if defined(DCM_USE_SERVICE_REQUESTCURRENTPOWERTRAINDIAGDATA) || defined(DCM_USE_SERVICE_REQUESTPOWERTRAINFREEZEFRAMEDATA)
 static boolean lookupPid(uint8 pidId,const Dcm_DspPidType **PidPtr)
 {
 	boolean pidFound = FALSE;
@@ -3397,7 +3420,9 @@ static boolean lookupPid(uint8 pidId,const Dcm_DspPidType **PidPtr)
 
 	return pidFound;
 }
+#endif
 
+#ifdef DCM_USE_SERVICE_REQUESTCURRENTPOWERTRAINDIAGDATA
 static boolean Dcm_SetAvailabilityPidValue(uint8 Pid,uint32 *Data)
 {
 	uint8 shift;
@@ -3595,7 +3620,9 @@ void DspObdRequestCurrentPowertrainDiagnosticData(const PduInfoType *pduRxData,P
 
 	return;
 }
+#endif
 
+#if defined(USE_DEM) && defined(DCM_USE_SERVICE_REQUESTPOWERTRAINFREEZEFRAMEDATA)
 /*@req OBD_DCM_REQ_9*/
 void DspObdRequsetPowertrainFreezeFrameData(const PduInfoType *pduRxData,PduInfoType *pduTxData)
 {
@@ -3604,7 +3631,6 @@ void DspObdRequsetPowertrainFreezeFrameData(const PduInfoType *pduRxData,PduInfo
 	uint16 j = 0;
 	uint16 flag = 0;
 	uint16 findPid = 0;
-	uint32 DATA = 0;
 	uint32 dtc = 0;
 	uint16 txPos = SID_LEN;
 	uint16 txLength = SID_LEN;
@@ -3840,8 +3866,9 @@ void DspObdRequsetPowertrainFreezeFrameData(const PduInfoType *pduRxData,PduInfo
 
 	return;
 }
+#endif
 
-
+#if defined(USE_DEM) && defined(DCM_USE_SERVICE_CLEAREMISSIONRELATEDDIAGNOSTICDATA)
 static boolean Dcm_LookupService(uint8 serviceId,const Dcm_DsdServiceType **dsdService)
 {
 	boolean serviceFind = FALSE;
@@ -3932,9 +3959,10 @@ void DspObdClearEmissionRelatedDiagnosticData(const PduInfoType *pduRxData,PduIn
 
 	return;
 }
+#endif
 
-
-
+#if defined(USE_DEM)
+#if defined(DCM_USE_SERVICE_REQUESTEMISSIONRELATEDDTCS) || defined(DCM_USE_SERVICE_REQUESTEMISSIONRELATEDDTCSDETECTEDDURINGCURRENTORLASCOMPLETEDDRIVINGCYCLE)
 static Dcm_NegativeResponseCodeType OBD_Sevice_03_07(PduInfoType *pduTxData,Dem_ReturnSetDTCFilterType setDtcFilterResult)
 {
 	Dcm_NegativeResponseCodeType responseCode = DCM_E_POSITIVERESPONSE;
@@ -3977,7 +4005,10 @@ static Dcm_NegativeResponseCodeType OBD_Sevice_03_07(PduInfoType *pduTxData,Dem_
 	return responseCode;
 
 }
+#endif
+#endif
 
+#if defined(USE_DEM) && defined(DCM_USE_SERVICE_REQUESTEMISSIONRELATEDDTCS)
 /*@req OBD_DCM_REQ_23*//* @req OBD_REQ_7 */
 void  DspObdRequestEmissionRelatedDiagnosticTroubleCodes(const PduInfoType *pduRxData,PduInfoType *pduTxData)
 {
@@ -4004,7 +4035,9 @@ void  DspObdRequestEmissionRelatedDiagnosticTroubleCodes(const PduInfoType *pduR
 	DsdDspProcessingDone(responseCode);
 
 }
+#endif
 
+#if defined(USE_DEM) && defined(DCM_USE_SERVICE_REQUESTEMISSIONRELATEDDTCSDETECTEDDURINGCURRENTORLASCOMPLETEDDRIVINGCYCLE)
 /*@req OBD_DCM_REQ_25*//* @req OBD_REQ_12 */
 void  DspObdRequestEmissionRelatedDiagnosticTroubleCodesService07(const PduInfoType *pduRxData,PduInfoType *pduTxData)
 {
@@ -4033,8 +4066,9 @@ void  DspObdRequestEmissionRelatedDiagnosticTroubleCodesService07(const PduInfoT
   return;
 
 }
+#endif
 
-
+#ifdef DCM_USE_SERVICE_REQUESTVEHICLEINFORMATION
 static boolean lookupInfoType(uint8 InfoType, const Dcm_DspVehInfoType **InfoTypePtr)
 {
 	const Dcm_DspVehInfoType *dspVehInfo = DCM_Config.Dsp->DspVehInfo;
@@ -4250,3 +4284,4 @@ void DspObdRequestvehicleinformation(const PduInfoType *pduRxData,PduInfoType *p
 	DsdDspProcessingDone(responseCode);
 
 }
+#endif
