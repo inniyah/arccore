@@ -64,7 +64,7 @@ typedef struct
 	uint8 				sleep_mode;
 	AppModeType 		app_mode;
 	EcuM_StateType 		current_state;
-#if defined(USE_COMM) || (USE_ECUM_COMM)
+#if defined(USE_COMM)
 	uint32 				run_comm_requests;
 #endif
 	uint32 				run_requests;
@@ -84,12 +84,7 @@ extern EcuM_GlobalType EcuM_World;
 
 void EcuM_enter_run_mode(void);
 
-#ifdef CFG_ECUM_USE_SERVICE_COMPONENT
 void set_current_state(EcuM_StateType state);
-#else
-#define set_current_state(state) EcuM_World.current_state = (state)
-#endif
-
 
 //#if defined(USE_LDEBUG_PRINTF)
 char *GetMainStateAsString( EcuM_StateType state );
